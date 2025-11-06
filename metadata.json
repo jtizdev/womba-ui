@@ -1,0 +1,5 @@
+{
+  "name": "Womba Test Case Uploader",
+  "description": "A UI to review, edit, and upload AI-generated test cases from the Womba service to your test repository.",
+  "requestFramePermissions": []
+}
