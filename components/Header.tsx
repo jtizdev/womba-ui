@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { WombaIcon, BellIcon, BellSlashIcon, EyeIcon, EyeSlashIcon } from './icons';
+import { WombaIcon, BellIcon, BellSlashIcon, EyeIcon, EyeSlashIcon, ChevronLeftIcon } from './icons';
 
 const quotes = [
     "It's not a bug, it's an undocumented feature.",
@@ -18,13 +18,22 @@ const quotes = [
 const getRandomQuote = () => quotes[Math.floor(Math.random() * quotes.length)];
 
 interface HeaderProps {
-    showNotifications: boolean;
-    onToggleNotifications: () => void;
-    highlightAssertions: boolean;
-    onToggleHighlightAssertions: () => void;
+    showNotifications?: boolean;
+    onToggleNotifications?: () => void;
+    highlightAssertions?: boolean;
+    onToggleHighlightAssertions?: () => void;
+    onBackToSearch?: () => void;
+    hideActions?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ showNotifications, onToggleNotifications, highlightAssertions, onToggleHighlightAssertions }) => {
+const Header: React.FC<HeaderProps> = ({ 
+    showNotifications, 
+    onToggleNotifications, 
+    highlightAssertions, 
+    onToggleHighlightAssertions,
+    onBackToSearch,
+    hideActions = false 
+}) => {
   const [quote] = useState(getRandomQuote);
 
   const TooltipButton: React.FC<{onClick: () => void; ariaLabel: string; tooltipText: string; children: React.ReactNode;}> = ({onClick, ariaLabel, tooltipText, children}) => (
@@ -45,7 +54,14 @@ const Header: React.FC<HeaderProps> = ({ showNotifications, onToggleNotification
   return (
     <header className="bg-slate-900/70 backdrop-blur-lg sticky top-0 z-10">
       <div className="container max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-        <div className="flex-1"></div>
+        <div className="flex-1">
+            {onBackToSearch && (
+                 <button onClick={onBackToSearch} className="flex items-center space-x-2 text-indigo-400 hover:text-indigo-300 text-sm font-medium transition-colors">
+                    <ChevronLeftIcon className="w-4 h-4" />
+                    <span>Back to Search</span>
+                </button>
+            )}
+        </div>
         <div className="flex-1 flex justify-center">
             <div className="text-center">
                 <div className="flex items-center justify-center space-x-3">
@@ -58,20 +74,24 @@ const Header: React.FC<HeaderProps> = ({ showNotifications, onToggleNotification
             </div>
         </div>
         <div className="flex-1 flex justify-end items-center space-x-2">
-            <TooltipButton
-                onClick={onToggleHighlightAssertions}
-                ariaLabel={highlightAssertions ? "Disable assertion highlighting" : "Enable assertion highlighting"}
-                tooltipText={highlightAssertions ? "Disable Assertion Highlighting" : "Enable Assertion Highlighting"}
-            >
-                {highlightAssertions ? <EyeIcon className="w-5 h-5" /> : <EyeSlashIcon className="w-5 h-5" />}
-            </TooltipButton>
-            <TooltipButton
-                onClick={onToggleNotifications}
-                ariaLabel={showNotifications ? "Disable notifications" : "Enable notifications"}
-                tooltipText={showNotifications ? "Disable Notifications" : "Enable Notifications"}
-            >
-                 {showNotifications ? <BellIcon className="w-5 h-5" /> : <BellSlashIcon className="w-5 h-5" />}
-            </TooltipButton>
+            {!hideActions && onToggleHighlightAssertions && (
+                 <TooltipButton
+                    onClick={onToggleHighlightAssertions}
+                    ariaLabel={highlightAssertions ? "Disable assertion highlighting" : "Enable assertion highlighting"}
+                    tooltipText={highlightAssertions ? "Disable Assertion Highlighting" : "Enable Assertion Highlighting"}
+                >
+                    {highlightAssertions ? <EyeIcon className="w-5 h-5" /> : <EyeSlashIcon className="w-5 h-5" />}
+                </TooltipButton>
+            )}
+            {!hideActions && onToggleNotifications && (
+                <TooltipButton
+                    onClick={onToggleNotifications}
+                    ariaLabel={showNotifications ? "Disable notifications" : "Enable notifications"}
+                    tooltipText={showNotifications ? "Disable Notifications" : "Enable Notifications"}
+                >
+                    {showNotifications ? <BellIcon className="w-5 h-5" /> : <BellSlashIcon className="w-5 h-5" />}
+                </TooltipButton>
+            )}
         </div>
       </div>
     </header>
