@@ -27,10 +27,13 @@ const AutoResizingTextarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaEl
     return <textarea ref={textareaRef} {...props} />;
 };
 
+type TabType = 'script' | 'details' | 'preconditions' | 'summary';
+
 const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, onUpdate, onRemove, onToggleExpand, onUploadSingle, isUploading, highlightAssertions }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(testCase.title);
   const [editedSteps, setEditedSteps] = useState(testCase.steps);
+  const [activeTab, setActiveTab] = useState<TabType>('script');
 
   useEffect(() => {
     if (testCase.id.startsWith('TC-MANUAL-')) {
@@ -118,27 +121,170 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
             </button>
         </div>
       </div>
-       <div className={`transition-all duration-500 ease-in-out overflow-hidden ${testCase.isExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
+       <div className={`transition-all duration-500 ease-in-out overflow-hidden ${testCase.isExpanded ? 'max-h-[2000px]' : 'max-h-0'}`}>
          <div className="px-4 pb-4 pl-14 pt-2 border-t border-slate-700/50">
-            {isEditing ? (
-                <AutoResizingTextarea
+            {/* Tab Navigation */}
+            <div className="flex space-x-1 border-b border-slate-700/50 mb-4">
+              <button
+                onClick={() => setActiveTab('script')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === 'script'
+                    ? 'text-indigo-400 border-b-2 border-indigo-500'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                Test Script
+              </button>
+              <button
+                onClick={() => setActiveTab('details')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === 'details'
+                    ? 'text-indigo-400 border-b-2 border-indigo-500'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                Details
+              </button>
+              <button
+                onClick={() => setActiveTab('preconditions')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === 'preconditions'
+                    ? 'text-indigo-400 border-b-2 border-indigo-500'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                Preconditions
+              </button>
+              <button
+                onClick={() => setActiveTab('summary')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === 'summary'
+                    ? 'text-indigo-400 border-b-2 border-indigo-500'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                Summary
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab === 'script' && (
+              <div>
+                {isEditing ? (
+                  <AutoResizingTextarea
                     value={editedSteps}
                     onChange={(e) => setEditedSteps(e.target.value)}
                     className="w-full bg-slate-700 p-3 rounded-md text-slate-300 font-sans text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none"
                     rows={5}
-                />
-            ) : (
-                <div onDoubleClick={() => setIsEditing(true)} className="whitespace-pre-wrap text-slate-300 text-sm leading-relaxed cursor-pointer">
-                    {testCase.steps.split('\n').map((line, index) => (
-                        <p key={index} className={
-                            highlightAssertions && line.toLowerCase().includes('verify') 
-                            ? 'text-amber-300 font-semibold' 
-                            : ''
-                        }>
+                  />
+                ) : (
+                  <div onDoubleClick={() => setIsEditing(true)} className="text-slate-300 text-sm leading-relaxed cursor-pointer space-y-3">
+                    {testCase.stepsArray ? (
+                      // Structured steps display
+                      testCase.stepsArray.map((step, index) => {
+                        const isLastStep = index === testCase.stepsArray!.length - 1;
+                        return (
+                          <div key={index} className="space-y-1">
+                            <div className="flex items-start space-x-2">
+                              <span className="text-indigo-400 font-semibold flex-shrink-0">{step.step_number}.</span>
+                              <div className="flex-1">
+                                <p className="text-slate-200">{step.action}</p>
+                                {step.expected_result && (
+                                  <p className={`mt-1 pl-4 border-l-2 ${highlightAssertions && isLastStep ? 'border-amber-400 text-amber-300 font-semibold' : 'border-slate-600 text-slate-400'}`}>
+                                    <span className="text-xs uppercase tracking-wide opacity-75">Expected: </span>
+                                    {step.expected_result}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      // Fallback to plain text display with last line highlighting
+                      testCase.steps.split('\n').map((line, index, arr) => {
+                        const isLastLine = index === arr.length - 1;
+                        return (
+                          <p key={index} className={
+                            highlightAssertions && (isLastLine || line.toLowerCase().includes('verify') || line.toLowerCase().includes('expected'))
+                              ? 'text-amber-300 font-semibold'
+                              : ''
+                          }>
                             {line || <span className="select-none">&nbsp;</span>}
-                        </p>
-                    ))}
+                          </p>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'details' && (
+              <div className="space-y-3">
+                {testCase.description && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Description</h4>
+                    <p className="text-slate-300 text-sm">{testCase.description}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  {testCase.priority && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Priority</h4>
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        testCase.priority === 'critical' ? 'bg-red-500/20 text-red-300' :
+                        testCase.priority === 'high' ? 'bg-orange-500/20 text-orange-300' :
+                        testCase.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
+                        'bg-slate-500/20 text-slate-300'
+                      }`}>
+                        {testCase.priority}
+                      </span>
+                    </div>
+                  )}
+                  {testCase.test_type && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Test Type</h4>
+                      <span className="inline-block px-2 py-1 rounded bg-indigo-500/20 text-indigo-300 text-xs font-medium">
+                        {testCase.test_type}
+                      </span>
+                    </div>
+                  )}
                 </div>
+                {testCase.tags && testCase.tags.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Tags</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {testCase.tags.map((tag, idx) => (
+                        <span key={idx} className="px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'preconditions' && (
+              <div>
+                <div className="bg-slate-900/50 rounded-md p-4">
+                  <p className="text-slate-300 text-sm">
+                    {testCase.description || 'No preconditions specified for this test case.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'summary' && (
+              <div>
+                <div className="bg-slate-900/50 rounded-md p-4">
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Expected Result</h4>
+                  <p className="text-slate-300 text-sm">
+                    {testCase.description || 'Test should complete successfully with all steps passing.'}
+                  </p>
+                </div>
+              </div>
             )}
         </div>
       </div>

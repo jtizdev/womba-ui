@@ -22,10 +22,12 @@ const ITEMS_PER_PAGE = 4;
 interface TestPlanPageProps {
     jiraStory: string;
     initialTestCases: TestCase[];
+    issueKey: string;
+    zephyrResults?: any;
     onBackToSearch: () => void;
 }
 
-const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases, onBackToSearch }) => {
+const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases, issueKey, zephyrResults, onBackToSearch }) => {
   const [testCases, setTestCases] = useState<TestCase[]>(initialTestCases);
   const [isBulkUploading, setIsBulkUploading] = useState<boolean>(false);
   const [uploadingCardId, setUploadingCardId] = useState<string | null>(null);
@@ -35,6 +37,8 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
   const [testCaseToDelete, setTestCaseToDelete] = useState<{ id: string; title: string } | null>(null);
   const [lastRemoved, setLastRemoved] = useState<{ testCase: TestCase; index: number } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [uploadStats, setUploadStats] = useState<{ count: number; zephyrIds: string[]; folderPath?: string } | null>(null);
 
 
   const triggerNotification = useCallback((message: string, type: NotificationType, onUndo?: () => void) => {
@@ -157,10 +161,14 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
   const handleUploadSingle = useCallback(async (testCaseToUpload: TestCase) => {
     if (isBulkUploading || uploadingCardId) return;
 
+    // Note: This is a simplified upload. In production, you'd want to prompt for project key
+    const projectKeyToUse = issueKey.split('-')[0]; // Extract project key from issue key
+
     setUploadingCardId(testCaseToUpload.id);
     try {
-        await uploadTestCases([testCaseToUpload]);
-        triggerNotification(`Uploaded: "${testCaseToUpload.title}"`, 'success');
+        const result = await uploadTestCases(issueKey, [testCaseToUpload], projectKeyToUse);
+        const uploadedIds = result.zephyr_results?.test_case_ids || [];
+        triggerNotification(`Uploaded: "${testCaseToUpload.title}" (${uploadedIds.length} test cases)`, 'success');
         const newTestCases = testCases.filter(tc => tc.id !== testCaseToUpload.id);
         setTestCases(newTestCases);
         if ((currentPage - 1) * ITEMS_PER_PAGE >= newTestCases.length && currentPage > 1) {
@@ -171,7 +179,7 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
     } finally {
         setUploadingCardId(null);
     }
-  }, [isBulkUploading, uploadingCardId, triggerNotification, testCases, currentPage]);
+  }, [isBulkUploading, uploadingCardId, triggerNotification, testCases, currentPage, issueKey]);
 
 
   const selectedCount = useMemo(() => {
@@ -190,10 +198,22 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
       return;
     }
 
+    const projectKeyToUse = issueKey.split('-')[0]; // Extract project key from issue key
+
     try {
       setIsBulkUploading(true);
-      await uploadTestCases(selectedCases);
-      triggerNotification(`${selectedCases.length} test case(s) uploaded successfully!`, 'success');
+      const result = await uploadTestCases(issueKey, selectedCases, projectKeyToUse);
+      const uploadedCount = result.zephyr_results?.uploaded_count || selectedCases.length;
+      const zephyrIds = result.zephyr_results?.test_case_ids || [];
+      
+      // Show success modal with stats
+      setUploadStats({
+        count: uploadedCount,
+        zephyrIds: zephyrIds,
+        folderPath: result.zephyr_results?.folder_path
+      });
+      setShowSuccessModal(true);
+      
       const selectedIds = new Set(selectedCases.map(tc => tc.id));
       const newTestCases = testCases.filter(tc => !selectedIds.has(tc.id));
       setTestCases(newTestCases);
@@ -220,6 +240,65 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
 
   return (
     <>
+      {/* Success Banner - Non-blocking */}
+      {showSuccessModal && uploadStats && (
+        <div className="fixed top-6 right-6 z-50 max-w-md animate-slide-in-right">
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg shadow-2xl ring-1 ring-indigo-500/50 overflow-hidden">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="absolute top-3 right-3 text-white/80 hover:text-white transition-colors z-10"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Content */}
+            <div className="p-5">
+              <div className="flex items-start space-x-3">
+                {/* Success Icon */}
+                <div className="flex-shrink-0 mt-0.5">
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Text Content */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-bold text-sm mb-1">
+                    Successfully Uploaded!
+                  </h3>
+                  <div className="text-white/90 text-xs space-y-1">
+                    <p>
+                      <span className="font-semibold">{uploadStats.count}</span> test case{uploadStats.count !== 1 ? 's' : ''} uploaded to Zephyr
+                    </p>
+                    {uploadStats.folderPath && (
+                      <p className="text-white/80">
+                        📁 Folder: <span className="font-semibold">{uploadStats.folderPath}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  onBackToSearch();
+                }}
+                className="mt-4 w-full bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-2 px-4 rounded-md transition-colors"
+              >
+                Create Another Test Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Header 
         showNotifications={showNotifications}
         onToggleNotifications={() => setShowNotifications(prev => !prev)}
@@ -233,6 +312,11 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
             <div className="mb-8 text-center">
                 <h2 className="text-3xl font-bold text-slate-100 mb-1">{jiraStory}</h2>
                 <p className="text-slate-400">Review, edit, and upload the generated test cases.</p>
+                {zephyrResults && zephyrResults.test_case_ids && zephyrResults.test_case_ids.length > 0 && (
+                    <p className="text-sm text-green-400 mt-2">
+                        ✓ Already uploaded {zephyrResults.test_case_ids.length} test cases to Zephyr
+                    </p>
+                )}
             </div>
             <div className="flex justify-between items-center mb-6 px-1">
                 <p className="text-xs text-slate-500 font-mono uppercase tracking-wider">

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Womba API Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        .test {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            background: #2a2a2a;
+        }
+        .test h3 {
+            margin: 0 0 10px 0;
+            color: #00aaff;
+        }
+        .success {
+            color: #00ff00;
+        }
+        .error {
+            color: #ff0000;
+        }
+        .warning {
+            color: #ffaa00;
+        }
+        pre {
+            background: #1a1a1a;
+            padding: 10px;
+            overflow-x: auto;
+            max-height: 300px;
+        }
+        button {
+            background: #00aaff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0088cc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Womba API Endpoint Tests</h1>
+    <div id="api-base">
+        <label>API Base URL: <input id="apiUrl" type="text" value="http://localhost:8000" style="width: 300px; padding: 5px;"></label>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+    <div id="results"></div>
+
+    <script>
+        const API_BASE_URL = () => document.getElementById('apiUrl').value;
+
+        async function testEndpoint(name, method, path, body = null, expectedStatus = 200) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'test';
+            resultDiv.innerHTML = `<h3>${name}</h3><div>Testing ${method} ${path}...</div>`;
+            document.getElementById('results').appendChild(resultDiv);
+
+            try {
+                const options = {
+                    method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const url = API_BASE_URL() + path;
+                const startTime = Date.now();
+                const response = await fetch(url, options);
+                const duration = Date.now() - startTime;
+
+                let data;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    data = await response.text();
+                }
+
+                const statusClass = response.ok ? 'success' : 'error';
+                resultDiv.innerHTML = `
+                    <h3>${name}</h3>
+                    <div class="${statusClass}">Status: ${response.status} ${response.statusText} (${duration}ms)</div>
+                    <div>Expected: ${expectedStatus}</div>
+                    <div class="${response.status === expectedStatus ? 'success' : 'warning'}">
+                        ${response.status === expectedStatus ? '✓ PASS' : '⚠ Status mismatch'}
+                    </div>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>${name}</h3>
+                    <div class="error">ERROR: ${error.message}</div>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        }
+
+        async function runAllTests() {
+            document.getElementById('results').innerHTML = '';
+
+            // Test 1: Health Check
+            await testEndpoint('Health Check', 'GET', '/health');
+
+            // Test 2: Root endpoint
+            await testEndpoint('Root', 'GET', '/');
+
+            // Test 3: RAG Stats
+            await testEndpoint('RAG Stats', 'GET', '/api/v1/rag/stats');
+
+            // Test 4: Get Config
+            await testEndpoint('Get Config', 'GET', '/api/v1/config');
+
+            // Test 5: Get Stats
+            await testEndpoint('Get Stats', 'GET', '/api/v1/stats');
+
+            // Test 6: Get History
+            await testEndpoint('Get History', 'GET', '/api/v1/history?limit=10&offset=0');
+
+            // Test 7: UI Health
+            await testEndpoint('UI Health', 'GET', '/api/v1/health');
+
+            // Test 8: Search RAG (will likely fail without data, but tests endpoint)
+            await testEndpoint('Search RAG', 'POST', '/api/v1/rag/search', {
+                query: 'test',
+                collection: 'test_plans',
+                top_k: 5
+            });
+
+            // Test 9: Get Story (will fail without valid issue key)
+            await testEndpoint('Get Story (Invalid)', 'GET', '/api/v1/stories/TEST-123', null, 404);
+
+            // Test 10: Generate Test Plan (will fail without valid issue key)
+            await testEndpoint('Generate Test Plan (Invalid)', 'POST', '/api/v1/test-plans/generate', {
+                issue_key: 'TEST-123',
+                upload_to_zephyr: false
+            }, 500);
+
+            console.log('All tests completed');
+        }
+
+        // Run tests on load
+        window.onload = () => {
+            console.log('API Test page loaded. Click "Run All Tests" to start.');
+        };
+    </script>
+</body>
+</html>
+

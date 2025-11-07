@@ -1,134 +1,245 @@
-import { TestCase, JiraStory, RagStats } from '../types';
+import { TestCase, JiraStory, RagStats, GenerateTestPlanResponse, Config, Stats, HistoryItem, RagSearchResult } from '../types';
 
-const API_BASE_URL = 'http://localhost:8000'; // As per API spec for development
-
-const mockJiraStories: JiraStory[] = [
-    { id: 'PROJ-123', title: 'Add user authentication feature', description: 'Implement OAuth2 authentication...' },
-    { id: 'PROJ-124', title: 'Implement "Add to Cart" functionality', description: 'Users should be able to add products to their shopping cart from the product detail page.' },
-    { id: 'PROJ-125', title: 'Develop the main dashboard page', description: 'The dashboard should show key metrics and recent activity.' },
-    { id: 'PROJ-126', title: 'User Profile Page UI/UX', description: 'Design and implement the user profile page where users can update their information.' },
-];
-
-/**
- * Searches for Jira stories.
- * This function is designed to call the `POST /api/v1/rag/search` endpoint.
- *
- * @param query The search query string.
- * @returns A promise that resolves to an array of JiraStory objects.
- */
-export const searchJiraStories = async (query: string): Promise<JiraStory[]> => {
-    console.log(`Searching for Jira stories with query: "${query}"`);
-    /*
-        // REAL API CALL:
-        const response = await fetch(`${API_BASE_URL}/api/v1/rag/search`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, collection: 'stories', top_k: 5 })
-        });
-        if (!response.ok) {
-            throw new Error('Failed to search stories');
-        }
-        const data = await response.json();
-        // NOTE: The mapping below assumes the structure of the RAG search result metadata.
-        return data.results.map((result: any) => ({
-            id: result.metadata.key,
-            title: result.metadata.summary,
-            description: result.metadata.description || '',
-        }));
-    */
-
-    // MOCK IMPLEMENTATION FOR DEMO:
-    return new Promise(resolve => {
-        setTimeout(() => {
-            if (!query) return resolve([]);
-            const lowerCaseQuery = query.toLowerCase();
-            const results = mockJiraStories.filter(
-                story => story.id.toLowerCase().includes(lowerCaseQuery) || story.title.toLowerCase().includes(lowerCaseQuery)
-            );
-            resolve(results);
-        }, 300);
-    });
-};
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 const formatSteps = (steps: Array<{ step_number: number; action: string; expected_result: string }>): string => {
     return steps.map(step => `${step.step_number}. ${step.action}\n   Expected Result: ${step.expected_result}`).join('\n\n');
 };
 
 /**
- * Generates a test plan for a given Jira story issue key.
- * This function is designed to call the `POST /api/v1/test-plans/generate` endpoint.
+ * Searches for Jira stories.
+ * This function calls the `POST /api/v1/rag/search` endpoint.
  *
- * @param issueKey The Jira issue key (e.g., "PROJ-123").
- * @returns A promise that resolves to an array of TestCase objects.
+ * @param query The search query string.
+ * @returns A promise that resolves to an array of JiraStory objects.
  */
-export const generateTestPlan = async (issueKey: string): Promise<TestCase[]> => {
-    console.log(`Generating test plan for story: ${issueKey}`);
-    /*
-        // REAL API CALL:
-        const response = await fetch(`${API_BASE_URL}/api/v1/test-plans/generate`, {
+export const searchJiraStories = async (query: string): Promise<JiraStory[]> => {
+    console.log(`Searching for Jira stories with query: "${query}"`);
+    console.log(`API Base URL: ${API_BASE_URL}`);
+    
+    try {
+        // Check if query looks like an exact issue key (e.g., "PLAT-13541")
+        const issueKeyPattern = /^[A-Z]+-\d+$/;
+        const isExactKey = issueKeyPattern.test(query.trim().toUpperCase());
+        
+        // If it's an exact key, try to fetch it directly first
+        if (isExactKey) {
+            const issueKey = query.trim().toUpperCase();
+            try {
+                const directResponse = await fetch(`${API_BASE_URL}/api/v1/stories/${issueKey}`);
+                if (directResponse.ok) {
+                    const story = await directResponse.json();
+                    console.log(`Found exact match for ${issueKey}`);
+                    return [{
+                        id: story.key,
+                        title: story.summary || 'No title',
+                        description: story.description || '',
+                    }];
+                }
+            } catch (e) {
+                console.log(`Direct fetch failed for ${issueKey}, falling back to RAG search`);
+            }
+        }
+        
+        // Fall back to RAG search
+        // Smart query enhancement: if query is just numbers, assume it's a story ID
+        let enhancedQuery = query.trim();
+        if (/^\d+$/.test(enhancedQuery)) {
+            // If it's just numbers, add common project prefix to help semantic search
+            enhancedQuery = `PLAT-${enhancedQuery} ${enhancedQuery}`;
+            console.log(`Enhanced number query to: "${enhancedQuery}"`);
+        }
+        
+        const url = `${API_BASE_URL}/api/v1/rag/search`;
+        const body = JSON.stringify({ query: enhancedQuery, collection: 'jira_stories', top_k: 5 });
+        
+        console.log(`Making request to: ${url}`);
+        console.log(`Request body:`, body);
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ issue_key: issueKey, upload_to_zephyr: false })
+            body: body
         });
+        
+        console.log(`Response status: ${response.status} ${response.statusText}`);
+        
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Failed to generate test plan' }));
-            throw new Error(error.message || 'Failed to generate test plan');
+            const errorText = await response.text();
+            console.error(`Search failed with status ${response.status}:`, errorText);
+            throw new Error(`Search failed: ${response.status} ${response.statusText} - ${errorText}`);
         }
+        
         const data = await response.json();
-        const apiTestCases = data.test_plan.test_cases;
-
-        return apiTestCases.map((tc: any, index: number) => ({
-            id: `TC-${issueKey}-${index + 1}`, // Generate a client-side unique ID
-            title: tc.title,
-            steps: `${tc.description ? tc.description + '\n\n---\n\n' : ''}${formatSteps(tc.steps)}`,
-            isSelected: true,
-            isExpanded: true,
-        }));
-    */
-
-    // MOCK IMPLEMENTATION FOR DEMO:
-    const mockApiResponse = {
-        test_plan: {
-            test_cases: [
-                { title: "Verify user login with valid credentials", description: "This test ensures a registered user can log in.", steps: [{ step_number: 1, action: "Navigate to login page", expected_result: "Login form is displayed" }, { step_number: 2, action: "Enter valid username and password", expected_result: "Fields are filled" }, { step_number: 3, action: "Click 'Login'", expected_result: "User is redirected to the dashboard" }] },
-                { title: "Verify user login with invalid password", description: "This test checks for the correct error on invalid password.", steps: [{ step_number: 1, action: "Navigate to login page", expected_result: "Login form is displayed" }, { step_number: 2, action: "Enter valid username and invalid password", expected_result: "Fields are filled" }, { step_number: 3, action: "Click 'Login'", expected_result: "An 'Invalid credentials' error is shown" }] },
-                { title: "Verify 'Remember Me' functionality", description: "Checks if the 'Remember Me' checkbox keeps the user logged in.", steps: [{ step_number: 1, action: "Navigate to login, check 'Remember Me', and log in", expected_result: "User is logged in" }, { step_number: 2, action: "Close and reopen the browser", expected_result: "Browser is reopened" }, { step_number: 3, action: "Navigate to the app URL", expected_result: "User is still logged in and on the dashboard" }] },
-                { title: "Verify password reset link request", description: "Ensures users can request a password reset link.", steps: [{ step_number: 1, action: "Navigate to login page and click 'Forgot Password'", expected_result: "Password reset page is displayed" }, { step_number: 2, action: "Enter registered email and submit", expected_result: "A confirmation message is shown" }, { step_number: 3, action: "Check user's email inbox", expected_result: "A password reset email is received" }] },
-            ],
+        console.log(`Search response:`, data);
+        
+        // Map the RAG search results to JiraStory format
+        if (!data.results || data.results.length === 0) {
+            console.log('No results found in search response');
+            return [];
         }
-    };
-    
-    return new Promise(resolve => {
-        setTimeout(() => {
-            const testCases = mockApiResponse.test_plan.test_cases.map((tc, index) => ({
-                id: `TC-${issueKey}-${index + 1}`,
-                title: tc.title,
-                steps: `${tc.description ? tc.description + '\n\n---\n\n' : ''}${formatSteps(tc.steps)}`,
-                isSelected: true,
-                isExpanded: true,
-            }));
-            resolve(testCases);
-        }, 2000);
-    });
+        
+        const mappedResults = data.results.map((result: any) => {
+            // Extract story key from metadata (API returns story_key, not key)
+            const storyKey = result.metadata?.story_key || result.metadata?.key || 'UNKNOWN';
+            
+            // Extract title from metadata summary
+            const title = result.metadata?.summary || result.metadata?.title || 'No title';
+            
+            // Extract description - clean up document field if it has object representations
+            let description = result.metadata?.description || '';
+            if (!description && result.document) {
+                // Parse document field to extract description
+                const docLines = result.document.split('\n');
+                const descLine = docLines.find((line: string) => line.startsWith('Description:'));
+                if (descLine) {
+                    description = descLine.replace('Description: ', '').trim();
+                    // Remove object representations
+                    if (description.includes('<') && description.includes('object at 0x')) {
+                        description = '';
+                    }
+                }
+            }
+            
+            return {
+                id: storyKey,
+                title: title,
+                description: description || '',
+            };
+        });
+        
+        // If searching for exact key, prioritize exact matches
+        if (isExactKey) {
+            const exactMatch = mappedResults.find(r => r.id === query.trim().toUpperCase());
+            if (exactMatch) {
+                // Move exact match to front
+                const otherResults = mappedResults.filter(r => r.id !== query.trim().toUpperCase());
+                return [exactMatch, ...otherResults];
+            }
+        }
+        
+        console.log(`Mapped ${mappedResults.length} results`);
+        return mappedResults;
+    } catch (error) {
+        console.error('Failed to search stories:', error);
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+            throw new Error(`Network error: Cannot connect to API at ${API_BASE_URL}. Is the server running?`);
+        }
+        throw error;
+    }
 };
 
 /**
- * Uploads a set of test cases.
- * NOTE: No direct endpoint was found in the API spec for uploading reviewed/modified test cases.
- * This function remains a mock. A real implementation might involve a different endpoint
- * or re-generating the plan with the `upload_to_zephyr` flag set to true.
+ * Generates a test plan for a given Jira story issue key.
+ * This function calls the `POST /api/v1/test-plans/generate` endpoint.
  *
- * @param cases An array of TestCase objects to upload.
- * @returns A promise that resolves to an object indicating success.
+ * @param issueKey The Jira issue key (e.g., "PROJ-123").
+ * @param uploadToZephyr Whether to upload to Zephyr.
+ * @param projectKey Project key for Zephyr upload.
+ * @param folderId Optional Zephyr folder ID.
+ * @returns A promise that resolves to an array of TestCase objects.
  */
-export const uploadTestCases = (cases: TestCase[]): Promise<{ success: boolean }> => {
-  console.log('Uploading test cases:', cases.map(c => c.title));
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log('Upload successful.');
-      resolve({ success: true });
-    }, 2000);
-  });
+export const generateTestPlan = async (
+    issueKey: string, 
+    uploadToZephyr: boolean = false,
+    projectKey?: string,
+    folderId?: string
+): Promise<{ testCases: TestCase[], zephyrResults?: any }> => {
+    console.log(`Generating test plan for story: ${issueKey}`);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/test-plans/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                issue_key: issueKey, 
+                upload_to_zephyr: uploadToZephyr,
+                project_key: projectKey,
+                folder_id: folderId
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Failed to generate test plan' }));
+            throw new Error(error.detail || 'Failed to generate test plan');
+        }
+        
+        const data: GenerateTestPlanResponse = await response.json();
+        const apiTestCases = data.test_plan.test_cases;
+
+        const testCases = apiTestCases.map((tc: any, index: number) => ({
+            id: `TC-${issueKey}-${index + 1}`,
+            title: tc.title,
+            description: tc.description,
+            priority: tc.priority,
+            test_type: tc.test_type,
+            tags: tc.tags,
+            steps: `${tc.description ? tc.description + '\n\n---\n\n' : ''}${formatSteps(tc.steps)}`,
+            stepsArray: tc.steps,  // Store structured steps
+            isSelected: true,
+            isExpanded: true,
+        }));
+
+        return {
+            testCases,
+            zephyrResults: data.zephyr_results
+        };
+    } catch (error) {
+        console.error('Failed to generate test plan:', error);
+        throw error;
+    }
+};
+
+/**
+ * Uploads test cases to Zephyr.
+ * Re-generates the test plan with upload_to_zephyr flag.
+ *
+ * @param issueKey The Jira issue key.
+ * @param cases An array of TestCase objects to upload.
+ * @param projectKey Project key for Zephyr.
+ * @param folderId Optional folder ID.
+ * @returns A promise that resolves to an object indicating success and Zephyr results.
+ */
+export const uploadTestCases = async (
+    issueKey: string,
+    cases: TestCase[],
+    projectKey: string,
+    folderId?: string
+): Promise<{ success: boolean; zephyr_results?: any }> => {
+    console.log('Uploading test cases to Zephyr:', cases.map(c => c.title));
+    
+    try {
+        // Call the new dedicated Zephyr upload endpoint
+        // Don't pass folder_id - let the backend use the AI-suggested folder from the test plan
+        const response = await fetch(`${API_BASE_URL}/api/v1/zephyr/upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                issue_key: issueKey,
+                project_key: projectKey
+                // folder_id removed - backend will use suggested_folder from test plan
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to upload test cases: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        return {
+            success: data.success,
+            zephyr_results: {
+                test_case_ids: data.test_case_ids,
+                uploaded_count: data.uploaded_count,
+                ...data.zephyr_results
+            }
+        };
+    } catch (error) {
+        console.error('Failed to upload test cases:', error);
+        throw error;
+    }
 };
 
 // --- RAG Management Service Functions ---
@@ -139,19 +250,19 @@ export const uploadTestCases = (cases: TestCase[]): Promise<{ success: boolean }
  */
 export const getRagStats = async (): Promise<RagStats> => {
     console.log('Fetching RAG stats');
-    /*
-        // REAL API CALL:
+    
+    try {
         const response = await fetch(`${API_BASE_URL}/api/v1/rag/stats`);
+        
         if (!response.ok) {
             throw new Error('Failed to fetch RAG stats');
         }
+        
         return response.json();
-    */
-    const mockStats: RagStats = {
-        test_plans: { count: 150, collections: ["test_plans"] },
-        stories: { count: 200, collections: ["stories"] }
-    };
-    return new Promise(resolve => setTimeout(() => resolve(mockStats), 500));
+    } catch (error) {
+        console.error('Failed to fetch RAG stats:', error);
+        throw error;
+    }
 };
 
 /**
@@ -160,19 +271,23 @@ export const getRagStats = async (): Promise<RagStats> => {
  */
 export const indexStory = async (storyKey: string, projectKey: string): Promise<any> => {
     console.log(`Indexing story ${storyKey} for project ${projectKey}`);
-    /*
-        // REAL API CALL:
+    
+    try {
         const response = await fetch(`${API_BASE_URL}/api/v1/rag/index`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ story_key: storyKey, project_key: projectKey })
         });
+        
         if (!response.ok) {
             throw new Error('Failed to index story');
         }
+        
         return response.json();
-    */
-    return new Promise(resolve => setTimeout(() => resolve({ status: 'success', message: `Successfully indexed ${storyKey}` }), 1500));
+    } catch (error) {
+        console.error('Failed to index story:', error);
+        throw error;
+    }
 };
 
 /**
@@ -181,17 +296,45 @@ export const indexStory = async (storyKey: string, projectKey: string): Promise<
  */
 export const batchIndexTests = async (projectKey: string, maxTests: number): Promise<any> => {
     console.log(`Batch indexing ${maxTests} tests for project ${projectKey}`);
-    /*
-        // REAL API CALL:
+    
+    try {
         const response = await fetch(`${API_BASE_URL}/api/v1/rag/index/batch?project_key=${projectKey}&max_tests=${maxTests}`, {
             method: 'POST'
         });
+        
         if (!response.ok) {
             throw new Error('Failed to start batch index');
         }
+        
         return response.json();
-    */
-    return new Promise(resolve => setTimeout(() => resolve({ status: 'success', message: `Successfully indexed 150 tests`, tests_indexed: 150 }), 3000));
+    } catch (error) {
+        console.error('Failed to batch index:', error);
+        throw error;
+    }
+};
+
+/**
+ * Index all available tests and stories (no limit).
+ * This may take a long time depending on data volume.
+ */
+export const indexAll = async (projectKey: string): Promise<any> => {
+    console.log(`Indexing all tests for project ${projectKey}`);
+    
+    try {
+        // Use a very high limit to essentially get "all"
+        const response = await fetch(`${API_BASE_URL}/api/v1/rag/index/batch?project_key=${projectKey}&max_tests=100000`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to start index-all');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Failed to index all:', error);
+        throw error;
+    }
 };
 
 /**
@@ -200,15 +343,194 @@ export const batchIndexTests = async (projectKey: string, maxTests: number): Pro
  */
 export const clearRagCollection = async (collection: string): Promise<any> => {
     console.log(`Clearing RAG collection: ${collection}`);
-    /*
-        // REAL API CALL:
+    
+    try {
         const response = await fetch(`${API_BASE_URL}/api/v1/rag/clear?collection=${collection}`, {
             method: 'DELETE'
         });
+        
         if (!response.ok) {
             throw new Error('Failed to clear collection');
         }
+        
         return response.json();
-    */
-    return new Promise(resolve => setTimeout(() => resolve({ status: 'success', message: `Cleared collection: ${collection}` }), 1000));
+    } catch (error) {
+        console.error('Failed to clear collection:', error);
+        throw error;
+    }
+};
+
+/**
+ * Searches the RAG database.
+ * Calls `POST /api/v1/rag/search`.
+ */
+export const searchRag = async (
+    query: string,
+    collection: string = 'test_plans',
+    topK: number = 10,
+    projectKey?: string
+): Promise<RagSearchResult[]> => {
+    console.log(`Searching RAG: ${query}`);
+    
+    try {
+        const body: any = { query, collection, top_k: topK };
+        if (projectKey) {
+            body.project_key = projectKey;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/rag/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to search RAG');
+        }
+        
+        const data = await response.json();
+        return data.results;
+    } catch (error) {
+        console.error('Failed to search RAG:', error);
+        throw error;
+    }
+};
+
+// --- Configuration Service Functions ---
+
+/**
+ * Gets the current configuration.
+ * Calls `GET /api/v1/config`.
+ */
+export const getConfig = async (): Promise<Config> => {
+    console.log('Fetching config');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/config`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch config');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Failed to fetch config:', error);
+        throw error;
+    }
+};
+
+/**
+ * Saves the configuration.
+ * Calls `POST /api/v1/config`.
+ */
+export const saveConfig = async (config: any): Promise<any> => {
+    console.log('Saving config');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save config');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Failed to save config:', error);
+        throw error;
+    }
+};
+
+/**
+ * Validates configuration settings.
+ * Calls `POST /api/v1/config/validate`.
+ */
+export const validateConfig = async (service: string, config: any): Promise<{ valid: boolean; message: string }> => {
+    console.log(`Validating ${service} config`);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/config/validate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ service, ...config })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Validation failed' }));
+            return { valid: false, message: error.detail || 'Validation failed' };
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Failed to validate config:', error);
+        return { valid: false, message: String(error) };
+    }
+};
+
+// --- Statistics and History Service Functions ---
+
+/**
+ * Gets statistics.
+ * Calls `GET /api/v1/stats`.
+ */
+export const getStats = async (): Promise<Stats> => {
+    console.log('Fetching stats');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/stats`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch stats');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Failed to fetch stats:', error);
+        throw error;
+    }
+};
+
+/**
+ * Gets test generation history.
+ * Calls `GET /api/v1/history`.
+ */
+export const getHistory = async (limit: number = 50, offset: number = 0): Promise<HistoryItem[]> => {
+    console.log('Fetching history');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/history?limit=${limit}&offset=${offset}`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch history');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Failed to fetch history:', error);
+        throw error;
+    }
+};
+
+/**
+ * Get detailed test plan for a specific history item.
+ * Calls `GET /api/v1/history/{id}`.
+ */
+export const getHistoryDetails = async (id: string): Promise<HistoryItem> => {
+    console.log(`Fetching history details for ID: ${id}`);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/history/${id}`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch history details');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Failed to fetch history details:', error);
+        throw error;
+    }
 };

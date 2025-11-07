@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RagStats } from '../types';
-import { getRagStats, indexStory, batchIndexTests, clearRagCollection } from '../services/testCaseService';
-import { DatabaseIcon, LoadingSpinner, TrashIcon, UploadIcon, AlertTriangleIcon } from './icons';
+import { RagStats, RagSearchResult } from '../types';
+import { getRagStats, indexStory, batchIndexTests, indexAll, clearRagCollection, searchRag } from '../services/testCaseService';
+import { DatabaseIcon, LoadingSpinner, TrashIcon, UploadIcon, AlertTriangleIcon, SearchIcon } from './icons';
 import Notification from './Notification';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -21,6 +21,16 @@ const RagManagementPage: React.FC = () => {
     const [batchProjectKey, setBatchProjectKey] = useState('');
     const [batchMaxTests, setBatchMaxTests] = useState('1000');
     const [isBatchIndexing, setIsBatchIndexing] = useState(false);
+
+    const [indexAllProjectKey, setIndexAllProjectKey] = useState('');
+    const [isIndexingAll, setIsIndexingAll] = useState(false);
+
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchCollection, setSearchCollection] = useState('test_plans');
+    const [searchProjectKey, setSearchProjectKey] = useState('');
+    const [searchTopK, setSearchTopK] = useState('10');
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState<RagSearchResult[]>([]);
 
     const triggerNotification = useCallback((message: string, type: NotificationType) => {
         const newNotification = { id: Date.now(), message, type };
@@ -81,6 +91,23 @@ const RagManagementPage: React.FC = () => {
         }
     };
 
+    const handleIndexAll = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!indexAllProjectKey || isIndexingAll) return;
+        setIsIndexingAll(true);
+        triggerNotification('Starting index-all operation... This may take several minutes.', 'info');
+        try {
+            const result = await indexAll(indexAllProjectKey);
+            triggerNotification(result.message || `Successfully indexed all tests!`, 'success');
+            setIndexAllProjectKey('');
+            fetchStats(); // Refresh stats after indexing
+        } catch (error) {
+            triggerNotification('Failed to complete index-all operation.', 'error');
+        } finally {
+            setIsIndexingAll(false);
+        }
+    };
+
     const openClearModal = (collection: string) => {
         setModalState({ isOpen: true, collectionToClear: collection });
     };
@@ -95,6 +122,27 @@ const RagManagementPage: React.FC = () => {
             fetchStats(); // Refresh stats
         } catch (error) {
             triggerNotification(`Failed to clear collection: ${collection}.`, 'error');
+        }
+    };
+
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!searchQuery || isSearching) return;
+        setIsSearching(true);
+        setSearchResults([]);
+        try {
+            const results = await searchRag(
+                searchQuery,
+                searchCollection,
+                parseInt(searchTopK, 10),
+                searchProjectKey || undefined
+            );
+            setSearchResults(results);
+            triggerNotification(`Found ${results.length} results`, 'success');
+        } catch (error) {
+            triggerNotification('Failed to search RAG database.', 'error');
+        } finally {
+            setIsSearching(false);
         }
     };
 
@@ -134,11 +182,14 @@ const RagManagementPage: React.FC = () => {
                     <p className="text-slate-400">Manage the knowledge base for Womba's AI test generation.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <Card title="Database Statistics" icon={<DatabaseIcon className="w-6 h-6 text-indigo-400" />}>
                         <div className="space-y-4">
-                           <StatDisplay label="Indexed Stories" value={stats?.stories.count} />
-                           <StatDisplay label="Indexed Test Plans" value={stats?.test_plans.count} />
+                           <StatDisplay label="Total Documents" value={stats?.total_documents ?? 0} />
+                           <StatDisplay label="Jira Stories" value={stats?.jira_stories?.count ?? 0} />
+                           <StatDisplay label="Test Plans" value={stats?.test_plans?.count ?? 0} />
+                           <StatDisplay label="Existing Tests" value={stats?.existing_tests?.count ?? 0} />
+                           <StatDisplay label="Confluence Docs" value={stats?.confluence_docs?.count ?? 0} />
                         </div>
                     </Card>
                     <Card title="Index Single Story" icon={<UploadIcon className="w-6 h-6 text-indigo-400" />}>
@@ -171,16 +222,137 @@ const RagManagementPage: React.FC = () => {
                             </SubmitButton>
                         </form>
                     </Card>
+                    <Card title="Index All (Unlimited)" icon={<DatabaseIcon className="w-6 h-6 text-yellow-400" />}>
+                        <p className="text-sm text-slate-400 mb-4">Index all available tests and stories. This may take several minutes depending on data volume.</p>
+                        <form onSubmit={handleIndexAll} className="space-y-4">
+                            <div>
+                               <label htmlFor="indexAllProjectKey" className="block text-sm font-medium text-slate-300 mb-1">Project Key</label>
+                               <InputField id="indexAllProjectKey" type="text" value={indexAllProjectKey} onChange={e => setIndexAllProjectKey(e.target.value)} placeholder="e.g., PROJ" required />
+                            </div>
+                            <SubmitButton isLoading={isIndexingAll} disabled={!indexAllProjectKey}>
+                                {isIndexingAll ? 'Indexing All... Please Wait' : 'Start Index-All'}
+                            </SubmitButton>
+                            {isIndexingAll && (
+                                <p className="text-xs text-yellow-400">⏱ This operation may take 5-10 minutes. You can navigate away and come back.</p>
+                            )}
+                        </form>
+                    </Card>
+                </div>
+
+                {/* RAG Search Section */}
+                <div className="mb-6">
+                    <Card title="Search RAG Database" icon={<SearchIcon className="w-6 h-6 text-indigo-400" />}>
+                        <form onSubmit={handleSearch} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="searchQuery" className="block text-sm font-medium text-slate-300 mb-1">Search Query</label>
+                                    <InputField 
+                                        id="searchQuery" 
+                                        type="text" 
+                                        value={searchQuery} 
+                                        onChange={e => setSearchQuery(e.target.value)} 
+                                        placeholder="e.g., authentication tests" 
+                                        required 
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="searchCollection" className="block text-sm font-medium text-slate-300 mb-1">Collection</label>
+                                    <select 
+                                        id="searchCollection"
+                                        value={searchCollection}
+                                        onChange={e => setSearchCollection(e.target.value)}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    >
+                                        <option value="test_plans">Test Plans</option>
+                                        <option value="jira_stories">Jira Stories</option>
+                                        <option value="existing_tests">Existing Tests</option>
+                                        <option value="confluence_docs">Confluence Docs</option>
+                                        <option value="swagger_docs">Swagger Docs</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="searchProjectKey" className="block text-sm font-medium text-slate-300 mb-1">Project Key (optional)</label>
+                                    <InputField 
+                                        id="searchProjectKey" 
+                                        type="text" 
+                                        value={searchProjectKey} 
+                                        onChange={e => setSearchProjectKey(e.target.value)} 
+                                        placeholder="e.g., PROJ" 
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="searchTopK" className="block text-sm font-medium text-slate-300 mb-1">Max Results</label>
+                                    <InputField 
+                                        id="searchTopK" 
+                                        type="number" 
+                                        value={searchTopK} 
+                                        onChange={e => setSearchTopK(e.target.value)} 
+                                        placeholder="10" 
+                                        min="1"
+                                        max="50"
+                                        required 
+                                    />
+                                </div>
+                            </div>
+                            <SubmitButton isLoading={isSearching} disabled={!searchQuery}>
+                                {isSearching ? 'Searching...' : 'Search'}
+                            </SubmitButton>
+                        </form>
+
+                        {searchResults.length > 0 && (
+                            <div className="mt-6">
+                                <h4 className="text-sm font-semibold text-slate-300 mb-3">Search Results ({searchResults.length})</h4>
+                                <div className="space-y-3 max-h-96 overflow-y-auto">
+                                    {searchResults.map((result, index) => (
+                                        <div key={index} className="bg-slate-900/70 border border-slate-700 rounded-md p-4">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="text-xs font-mono text-slate-400">
+                                                    Score: {result.score.toFixed(3)}
+                                                </span>
+                                                {result.metadata?.key && (
+                                                    <span className="text-xs font-mono text-indigo-400">
+                                                        {result.metadata.key}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-sm text-slate-300 line-clamp-3">{result.document}</p>
+                                            {result.metadata && (
+                                                <div className="mt-2 text-xs text-slate-500">
+                                                    {result.metadata.project_key && (
+                                                        <span className="mr-3">Project: {result.metadata.project_key}</span>
+                                                    )}
+                                                    {result.metadata.summary && (
+                                                        <span>Summary: {result.metadata.summary}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </Card>
+                </div>
+
+                {/* Danger Zone - Centered at Bottom */}
+                <div className="mt-12 mb-8 max-w-2xl mx-auto">
                     <Card title="Danger Zone" icon={<AlertTriangleIcon className="w-6 h-6 text-red-400" />}>
-                        <p className="text-sm text-slate-400 mb-4">These actions are irreversible. Please proceed with caution.</p>
+                        <p className="text-sm text-slate-400 mb-4 text-center">
+                            <AlertTriangleIcon className="w-5 h-5 inline-block mr-1 text-red-400" />
+                            These actions are irreversible. Please proceed with caution.
+                        </p>
                         <div className="space-y-3">
-                             <button onClick={() => openClearModal('stories')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
+                             <button onClick={() => openClearModal('jira_stories')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
                                 <TrashIcon className="w-4 h-4" />
-                                <span>Clear 'stories' collection</span>
+                                <span>Clear 'jira_stories' collection</span>
                             </button>
                             <button onClick={() => openClearModal('test_plans')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
                                 <TrashIcon className="w-4 h-4" />
                                 <span>Clear 'test_plans' collection</span>
+                            </button>
+                            <button onClick={() => openClearModal('existing_tests')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
+                                <TrashIcon className="w-4 h-4" />
+                                <span>Clear 'existing_tests' collection</span>
                             </button>
                         </div>
                     </Card>

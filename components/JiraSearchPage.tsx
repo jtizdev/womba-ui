@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { JiraStory, TestCase } from '../types';
-import { searchJiraStories, generateTestPlan } from '../services/testCaseService';
+import { JiraStory } from '../types';
+import { searchJiraStories } from '../services/testCaseService';
+import { useGeneration } from '../contexts/GenerationContext';
 import Header from './Header';
 import { SearchIcon, LoadingSpinner } from './icons';
 
-interface JiraSearchPageProps {
-  onGenerateTestPlan: (storyTitle: string, testCases: TestCase[]) => void;
-}
-
-type GenerationStatus = 'idle' | 'generating' | 'completed';
-
-const JiraSearchPage: React.FC<JiraSearchPageProps> = ({ onGenerateTestPlan }) => {
+const JiraSearchPage: React.FC = () => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<JiraStory[]>([]);
     const [selectedStory, setSelectedStory] = useState<JiraStory | null>(null);
     const [isSearching, setIsSearching] = useState(false);
-    const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle');
-    const [generatedTestCases, setGeneratedTestCases] = useState<TestCase[] | null>(null);
     const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+    const [uploadToZephyr, setUploadToZephyr] = useState(false);
+    const [projectKey, setProjectKey] = useState('');
+    const [folderId, setFolderId] = useState('');
+    
+    const { startGeneration, isGenerating } = useGeneration();
     
     const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -33,10 +31,15 @@ const JiraSearchPage: React.FC<JiraSearchPageProps> = ({ onGenerateTestPlan }) =
             try {
                 const data = await searchJiraStories(query);
                 setResults(data);
-                setIsDropdownVisible(true);
+                setIsDropdownVisible(data.length > 0);
             } catch (error) {
                 console.error("Failed to search Jira stories", error);
                 setResults([]);
+                setIsDropdownVisible(false);
+                // Show error to user in a better way
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.error("Search error details:", errorMessage);
+                // Don't use alert - just log for now, user can check console
             } finally {
                 setIsSearching(false);
             }
@@ -58,8 +61,6 @@ const JiraSearchPage: React.FC<JiraSearchPageProps> = ({ onGenerateTestPlan }) =
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setQuery(e.target.value);
         setSelectedStory(null);
-        setGenerationStatus('idle');
-        setGeneratedTestCases(null);
     };
     
     const handleSelectStory = (story: JiraStory) => {
@@ -69,45 +70,28 @@ const JiraSearchPage: React.FC<JiraSearchPageProps> = ({ onGenerateTestPlan }) =
     };
 
     const handleGenerate = async () => {
-        if (!selectedStory || generationStatus !== 'idle') return;
+        if (!selectedStory || isGenerating) return;
         
-        setGenerationStatus('generating');
-        try {
-            const testCases = await generateTestPlan(selectedStory.id);
-            setGeneratedTestCases(testCases);
-            setGenerationStatus('completed');
-        } catch (error) {
-            console.error("Failed to generate test plan", error);
-            // In a real app, you'd show a notification to the user here.
-            setGenerationStatus('idle');
-        }
-    };
-    
-    // FIX: Make handleViewPlan async to match the type of handleGenerate
-    const handleViewPlan = async () => {
-        if (!selectedStory || !generatedTestCases || generationStatus !== 'completed') return;
-        onGenerateTestPlan(selectedStory.title, generatedTestCases);
+        await startGeneration(
+            selectedStory.id,
+            selectedStory.title,
+            uploadToZephyr,
+            uploadToZephyr ? projectKey : undefined,
+            folderId || undefined
+        );
     };
 
     const renderMainButton = () => {
-        const isDisabled = !selectedStory || generationStatus === 'generating';
-        let text = 'Generate Test Plan';
-        let onClick = handleGenerate;
-        
-        if (generationStatus === 'generating') {
-            text = 'Generating Test Plan...';
-        } else if (generationStatus === 'completed') {
-            text = 'View Test Plan';
-            onClick = handleViewPlan;
-        }
+        const isDisabled = !selectedStory || isGenerating;
+        const text = isGenerating ? 'Generating Test Plan...' : 'Generate Test Plan';
 
         return (
             <button
-                onClick={onClick}
+                onClick={handleGenerate}
                 disabled={isDisabled}
                 className="w-full max-w-sm bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:from-zinc-700 disabled:to-zinc-700 disabled:cursor-not-allowed disabled:text-zinc-400 shadow-lg shadow-indigo-500/0 hover:shadow-indigo-500/40 disabled:shadow-none disabled:translate-y-0"
             >
-                {generationStatus === 'generating' && <LoadingSpinner className="w-5 h-5 mr-3" />}
+                {isGenerating && <LoadingSpinner className="w-5 h-5 mr-3" />}
                 {text}
             </button>
         );
@@ -158,6 +142,57 @@ const JiraSearchPage: React.FC<JiraSearchPageProps> = ({ onGenerateTestPlan }) =
                         </div>
                     )}
                 </div>
+
+                {/* Zephyr Upload Options */}
+                {selectedStory && !isGenerating && (
+                    <div className="mt-6 bg-slate-800/30 border border-slate-700 rounded-lg p-6">
+                        <h3 className="text-lg font-semibold text-slate-100 mb-4">Zephyr Upload Options</h3>
+                        <div className="space-y-4">
+                            <div className="flex items-center space-x-3">
+                                <input
+                                    id="uploadToZephyr"
+                                    type="checkbox"
+                                    checked={uploadToZephyr}
+                                    onChange={e => setUploadToZephyr(e.target.checked)}
+                                    className="w-4 h-4 text-indigo-600 bg-slate-900 border-slate-700 rounded focus:ring-indigo-500"
+                                />
+                                <label htmlFor="uploadToZephyr" className="text-sm font-medium text-slate-300">
+                                    Upload to Zephyr Scale immediately
+                                </label>
+                            </div>
+                            {uploadToZephyr && (
+                                <>
+                                    <div>
+                                        <label htmlFor="projectKey" className="block text-sm font-medium text-slate-300 mb-1">
+                                            Project Key (required)
+                                        </label>
+                                        <input
+                                            id="projectKey"
+                                            type="text"
+                                            value={projectKey}
+                                            onChange={e => setProjectKey(e.target.value)}
+                                            placeholder="e.g., PROJ"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="folderId" className="block text-sm font-medium text-slate-300 mb-1">
+                                            Folder ID (optional)
+                                        </label>
+                                        <input
+                                            id="folderId"
+                                            type="text"
+                                            value={folderId}
+                                            onChange={e => setFolderId(e.target.value)}
+                                            placeholder="Leave blank for default folder"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-500"
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 <div className="h-24" /> 
 
