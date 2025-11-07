@@ -269,8 +269,9 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
             {activeTab === 'preconditions' && (
               <div>
                 <div className="bg-slate-900/50 rounded-md p-4">
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Preconditions</h4>
                   <p className="text-slate-300 text-sm">
-                    {testCase.description || 'No preconditions specified for this test case.'}
+                    {testCase.preconditions || 'No preconditions specified for this test case.'}
                   </p>
                 </div>
               </div>
@@ -281,7 +282,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
                 <div className="bg-slate-900/50 rounded-md p-4">
                   <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Expected Result</h4>
                   <p className="text-slate-300 text-sm">
-                    {testCase.description || 'Test should complete successfully with all steps passing.'}
+                    {testCase.expected_result || 'Test should complete successfully with all steps passing.'}
                   </p>
                 </div>
               </div>

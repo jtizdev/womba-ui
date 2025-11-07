@@ -2,6 +2,8 @@ export interface TestCase {
   id: string;
   title: string;
   description?: string;
+  preconditions?: string;
+  expected_result?: string;
   steps: string;  // Kept as string for UI compatibility
   stepsArray?: TestStep[];  // Optional structured steps
   priority?: string;
@@ -44,6 +46,8 @@ export interface TestStep {
 export interface TestCaseAPI {
   title: string;
   description?: string;
+  preconditions?: string;
+  expected_result?: string;
   steps: TestStep[];
   priority?: string;
   test_type?: string;

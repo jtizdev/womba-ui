@@ -92,6 +92,8 @@ const AppContent: React.FC = () => {
                 id: `TC-${historyItem.story_key}-${index + 1}`,
                 title: tc.title,
                 description: tc.description,
+                preconditions: tc.preconditions,
+                expected_result: tc.expected_result,
                 priority: tc.priority,
                 test_type: tc.test_type,
                 tags: tc.tags,
