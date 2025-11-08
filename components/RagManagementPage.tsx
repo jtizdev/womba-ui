@@ -147,24 +147,24 @@ const RagManagementPage: React.FC = () => {
     };
 
     const Card: React.FC<{ title: string; children: React.ReactNode, icon?: React.ReactNode }> = ({ title, children, icon }) => (
-        <div className="bg-slate-800/50 rounded-lg shadow-lg ring-1 ring-slate-700 h-full flex flex-col">
-            <div className="p-4 border-b border-slate-700/50 flex items-center space-x-3">
+        <div className="bg-white dark:bg-slate-800/50 rounded-lg shadow-lg ring-1 ring-slate-200 dark:ring-slate-700 h-full flex flex-col">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center space-x-3">
                 {icon}
-                <h3 className="text-lg font-semibold text-slate-100">{title}</h3>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
             </div>
             <div className="p-6 flex-grow">{children}</div>
         </div>
     );
 
     const StatDisplay: React.FC<{label: string; value: number | string | undefined}> = ({label, value}) => (
-         <div className="flex justify-between items-baseline p-3 bg-slate-900/50 rounded-md">
-            <span className="text-slate-400 text-sm">{label}</span>
+         <div className="flex justify-between items-baseline p-3 bg-slate-100 dark:bg-slate-900/50 rounded-md">
+            <span className="text-slate-600 dark:text-slate-400 text-sm">{label}</span>
             <span className="text-2xl font-bold text-indigo-400">{value ?? <LoadingSpinner className="w-5 h-5" />}</span>
         </div>
     );
     
     const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
-        <input {...props} className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-500" />
+        <input {...props} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500" />
     );
 
     const SubmitButton: React.FC<{isLoading: boolean; children: React.ReactNode, disabled?: boolean}> = ({isLoading, children, disabled}) => (
@@ -178,8 +178,8 @@ const RagManagementPage: React.FC = () => {
         <>
             <div className="container max-w-6xl mx-auto px-4 py-8">
                 <div className="mb-8 text-center">
-                    <h2 className="text-3xl font-bold text-slate-100 mb-1">RAG Management</h2>
-                    <p className="text-slate-400">Manage the knowledge base for Womba's AI test generation.</p>
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-1">RAG Management</h2>
+                    <p className="text-slate-600 dark:text-slate-400">Manage the knowledge base for Womba's AI test generation.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -195,11 +195,11 @@ const RagManagementPage: React.FC = () => {
                     <Card title="Index Single Story" icon={<UploadIcon className="w-6 h-6 text-indigo-400" />}>
                         <form onSubmit={handleIndexStory} className="space-y-4">
                             <div>
-                               <label htmlFor="storyKey" className="block text-sm font-medium text-slate-300 mb-1">Story Key</label>
+                               <label htmlFor="storyKey" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Story Key</label>
                                <InputField id="storyKey" type="text" value={storyKey} onChange={e => setStoryKey(e.target.value)} placeholder="e.g., PROJ-123" required />
                             </div>
                              <div>
-                               <label htmlFor="projectKey" className="block text-sm font-medium text-slate-300 mb-1">Project Key</label>
+                               <label htmlFor="projectKey" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Project Key</label>
                                <InputField id="projectKey" type="text" value={projectKey} onChange={e => setProjectKey(e.target.value)} placeholder="e.g., PROJ" required />
                             </div>
                             <SubmitButton isLoading={isIndexing} disabled={!storyKey || !projectKey}>
@@ -210,11 +210,11 @@ const RagManagementPage: React.FC = () => {
                      <Card title="Batch Index from Zephyr" icon={<UploadIcon className="w-6 h-6 text-indigo-400" />}>
                         <form onSubmit={handleBatchIndex} className="space-y-4">
                             <div>
-                               <label htmlFor="batchProjectKey" className="block text-sm font-medium text-slate-300 mb-1">Project Key</label>
+                               <label htmlFor="batchProjectKey" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Project Key</label>
                                <InputField id="batchProjectKey" type="text" value={batchProjectKey} onChange={e => setBatchProjectKey(e.target.value)} placeholder="e.g., PROJ" required />
                             </div>
                              <div>
-                               <label htmlFor="batchMaxTests" className="block text-sm font-medium text-slate-300 mb-1">Max Tests to Index</label>
+                               <label htmlFor="batchMaxTests" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Max Tests to Index</label>
                                <InputField id="batchMaxTests" type="number" value={batchMaxTests} onChange={e => setBatchMaxTests(e.target.value)} placeholder="1000" required />
                             </div>
                             <SubmitButton isLoading={isBatchIndexing} disabled={!batchProjectKey || !batchMaxTests}>
@@ -223,10 +223,10 @@ const RagManagementPage: React.FC = () => {
                         </form>
                     </Card>
                     <Card title="Index All (Unlimited)" icon={<DatabaseIcon className="w-6 h-6 text-yellow-400" />}>
-                        <p className="text-sm text-slate-400 mb-4">Index all available tests and stories. This may take several minutes depending on data volume.</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Index all available tests and stories. This may take several minutes depending on data volume.</p>
                         <form onSubmit={handleIndexAll} className="space-y-4">
                             <div>
-                               <label htmlFor="indexAllProjectKey" className="block text-sm font-medium text-slate-300 mb-1">Project Key</label>
+                               <label htmlFor="indexAllProjectKey" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Project Key</label>
                                <InputField id="indexAllProjectKey" type="text" value={indexAllProjectKey} onChange={e => setIndexAllProjectKey(e.target.value)} placeholder="e.g., PROJ" required />
                             </div>
                             <SubmitButton isLoading={isIndexingAll} disabled={!indexAllProjectKey}>
@@ -245,7 +245,7 @@ const RagManagementPage: React.FC = () => {
                         <form onSubmit={handleSearch} className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label htmlFor="searchQuery" className="block text-sm font-medium text-slate-300 mb-1">Search Query</label>
+                                    <label htmlFor="searchQuery" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Search Query</label>
                                     <InputField 
                                         id="searchQuery" 
                                         type="text" 
@@ -256,12 +256,12 @@ const RagManagementPage: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="searchCollection" className="block text-sm font-medium text-slate-300 mb-1">Collection</label>
+                                    <label htmlFor="searchCollection" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Collection</label>
                                     <select 
                                         id="searchCollection"
                                         value={searchCollection}
                                         onChange={e => setSearchCollection(e.target.value)}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     >
                                         <option value="test_plans">Test Plans</option>
                                         <option value="jira_stories">Jira Stories</option>
@@ -271,7 +271,7 @@ const RagManagementPage: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="searchProjectKey" className="block text-sm font-medium text-slate-300 mb-1">Project Key (optional)</label>
+                                    <label htmlFor="searchProjectKey" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Project Key (optional)</label>
                                     <InputField 
                                         id="searchProjectKey" 
                                         type="text" 
@@ -281,7 +281,7 @@ const RagManagementPage: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="searchTopK" className="block text-sm font-medium text-slate-300 mb-1">Max Results</label>
+                                    <label htmlFor="searchTopK" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Max Results</label>
                                     <InputField 
                                         id="searchTopK" 
                                         type="number" 
@@ -301,10 +301,10 @@ const RagManagementPage: React.FC = () => {
 
                         {searchResults.length > 0 && (
                             <div className="mt-6">
-                                <h4 className="text-sm font-semibold text-slate-300 mb-3">Search Results ({searchResults.length})</h4>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Search Results ({searchResults.length})</h4>
                                 <div className="space-y-3 max-h-96 overflow-y-auto">
                                     {searchResults.map((result, index) => (
-                                        <div key={index} className="bg-slate-900/70 border border-slate-700 rounded-md p-4">
+                                        <div key={index} className="bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-md p-4">
                                             <div className="flex justify-between items-start mb-2">
                                                 <span className="text-xs font-mono text-slate-400">
                                                     Score: {result.score.toFixed(3)}
@@ -315,7 +315,7 @@ const RagManagementPage: React.FC = () => {
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-sm text-slate-300 line-clamp-3">{result.document}</p>
+                                            <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-3">{result.document}</p>
                                             {result.metadata && (
                                                 <div className="mt-2 text-xs text-slate-500">
                                                     {result.metadata.project_key && (
@@ -337,7 +337,7 @@ const RagManagementPage: React.FC = () => {
                 {/* Danger Zone - Centered at Bottom */}
                 <div className="mt-12 mb-8 max-w-2xl mx-auto">
                     <Card title="Danger Zone" icon={<AlertTriangleIcon className="w-6 h-6 text-red-400" />}>
-                        <p className="text-sm text-slate-400 mb-4 text-center">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 text-center">
                             <AlertTriangleIcon className="w-5 h-5 inline-block mr-1 text-red-400" />
                             These actions are irreversible. Please proceed with caution.
                         </p>
