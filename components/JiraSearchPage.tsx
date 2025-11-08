@@ -106,7 +106,7 @@ const JiraSearchPage: React.FC = () => {
                 </div>
 
                 {/* Search Card */}
-                <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-slate-200 dark:border-slate-700 shadow-lg mb-8">
+                <div className={`bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-slate-200 dark:border-slate-700 shadow-lg ${selectedStory ? 'mb-8' : 'mb-96'}`}>
                     <div ref={searchContainerRef} className="relative">
                         <div className="absolute inset-y-0 left-0 flex items-center pl-5 pointer-events-none">
                             <SearchIcon className="w-7 h-7 text-slate-500 dark:text-slate-500" />
