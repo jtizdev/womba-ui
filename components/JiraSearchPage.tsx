@@ -126,24 +126,33 @@ const JiraSearchPage: React.FC = () => {
                             </div>
                         )}
                         {isDropdownVisible && (
-                            <div className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 max-h-80 overflow-y-auto">
+                            <div className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden">
                                 {isSearching ? (
                                     <div className="flex justify-center items-center p-6">
                                         <LoadingSpinner className="w-6 h-6 text-indigo-500" />
                                     </div>
                                 ) : results.length > 0 ? (
-                                    <ul className="divide-y divide-slate-200 dark:divide-slate-700/50">
-                                        {results.map(story => (
-                                            <li
-                                                key={story.id}
-                                                onClick={() => handleSelectStory(story)}
-                                                className="p-5 text-left cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-600/10 transition-colors"
-                                            >
-                                                <p className="font-semibold text-slate-900 dark:text-slate-100 mb-1">{story.title}</p>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">{story.id}</p>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    <>
+                                        {/* Results Header */}
+                                        <div className="sticky top-0 bg-slate-100 dark:bg-slate-900 px-5 py-3 border-b border-slate-200 dark:border-slate-700 z-10">
+                                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                Found {results.length} {results.length === 1 ? 'story' : 'stories'}
+                                            </p>
+                                        </div>
+                                        {/* Scrollable Results */}
+                                        <ul className="divide-y divide-slate-200 dark:divide-slate-700/50 max-h-96 overflow-y-auto">
+                                            {results.map(story => (
+                                                <li
+                                                    key={story.id}
+                                                    onClick={() => handleSelectStory(story)}
+                                                    className="p-5 text-left cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-600/10 transition-colors"
+                                                >
+                                                    <p className="font-semibold text-slate-900 dark:text-slate-100 mb-1">{story.title}</p>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">{story.id}</p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </>
                                 ) : (
                                     <p className="p-5 text-slate-500 dark:text-slate-500 text-center">No stories found.</p>
                                 )}

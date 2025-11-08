@@ -51,7 +51,7 @@ export const searchJiraStories = async (query: string): Promise<JiraStory[]> => 
         }
         
         const url = `${API_BASE_URL}/api/v1/rag/search`;
-        const body = JSON.stringify({ query: enhancedQuery, collection: 'jira_stories', top_k: 5 });
+        const body = JSON.stringify({ query: enhancedQuery, collection: 'jira_stories', top_k: 50 });
         
         console.log(`Making request to: ${url}`);
         console.log(`Request body:`, body);
