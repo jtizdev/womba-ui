@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { WombaIcon, BellIcon, BellSlashIcon, EyeIcon, EyeSlashIcon, ChevronLeftIcon } from './icons';
+import ThemeToggle from './ThemeToggle';
 
 const quotes = [
     "It's not a bug, it's an undocumented feature.",
@@ -92,6 +93,8 @@ const Header: React.FC<HeaderProps> = ({
                     {showNotifications ? <BellIcon className="w-5 h-5" /> : <BellSlashIcon className="w-5 h-5" />}
                 </TooltipButton>
             )}
+            {/* Theme Toggle - Always visible */}
+            <ThemeToggle />
         </div>
       </div>
     </header>

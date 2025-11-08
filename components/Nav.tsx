@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { WombaIcon, DatabaseIcon, UploadIcon, LogoutIcon } from './icons';
-import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
@@ -159,10 +158,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-        <div className="flex justify-center">
-          <ThemeToggle />
-        </div>
-        
         {/* Logout Button */}
         <button
           onClick={logout}
