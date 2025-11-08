@@ -72,7 +72,7 @@ const GenerationToast: React.FC<GenerationToastProps> = ({ onViewTestPlan }) => 
 
     return (
         <div 
-            className={`fixed top-6 right-6 z-50 w-80 transition-all duration-300 ${
+            className={`fixed top-20 right-6 z-50 w-80 transition-all duration-300 ${
                 isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
             }`}
         >
