@@ -40,23 +40,23 @@ const Header: React.FC<HeaderProps> = ({
     <div className="relative group">
         <button 
             onClick={onClick} 
-            className="p-2 rounded-full text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
             aria-label={ariaLabel}
         >
             {children}
         </button>
-        <span className="absolute whitespace-nowrap top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-slate-700 text-slate-100 text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+        <span className="absolute whitespace-nowrap top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-slate-700 dark:bg-slate-700 text-slate-100 text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
             {tooltipText}
         </span>
     </div>
   );
 
   return (
-    <header className="bg-slate-900/70 backdrop-blur-lg sticky top-0 z-10">
+    <header className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-lg sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800">
       <div className="container max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex-1">
             {onBackToSearch && (
-                 <button onClick={onBackToSearch} className="flex items-center space-x-2 text-indigo-400 hover:text-indigo-300 text-sm font-medium transition-colors">
+                 <button onClick={onBackToSearch} className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 text-sm font-medium transition-colors">
                     <ChevronLeftIcon className="w-4 h-4" />
                     <span>Back to Search</span>
                 </button>
@@ -66,11 +66,11 @@ const Header: React.FC<HeaderProps> = ({
             <div className="text-center">
                 <div className="flex items-center justify-center space-x-3">
                     <WombaIcon className="w-8 h-8 text-indigo-500" />
-                    <h1 className="text-2xl font-bold text-slate-100">
-                        <span className="text-indigo-400">Womba</span> Watcher
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                        <span className="text-indigo-600 dark:text-indigo-400">Womba</span> Watcher
                     </h1>
                 </div>
-                <p className="text-xs text-slate-400 italic mt-1 hidden md:block">"{quote}"</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-1 hidden md:block">"{quote}"</p>
             </div>
         </div>
         <div className="flex-1 flex justify-end items-center space-x-2">

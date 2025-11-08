@@ -1,6 +1,6 @@
 import { TestCase, JiraStory, RagStats, GenerateTestPlanResponse, Config, Stats, HistoryItem, RagSearchResult } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 const formatSteps = (steps: Array<{ step_number: number; action: string; expected_result: string }>): string => {
     return steps.map(step => `${step.step_number}. ${step.action}\n   Expected Result: ${step.expected_result}`).join('\n\n');

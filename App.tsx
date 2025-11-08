@@ -4,14 +4,17 @@ import TestPlanPage from './components/TestPlanPage';
 import RagManagementPage from './components/RagManagementPage';
 import ConfigPage from './components/ConfigPage';
 import StatsPage from './components/StatsPage';
+import PromptConfigPage from './components/PromptConfigPage';
 import Sidebar from './components/Nav';
 import GenerationToast from './components/GenerationToast';
 import LoadingIndicator from './components/LoadingIndicator';
 import LandingPage from './components/LandingPage';
 import { GenerationProvider, useGeneration } from './contexts/GenerationContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { TestCase } from './types';
 
-type View = 'generation' | 'rag' | 'config' | 'stats';
+type View = 'generation' | 'rag' | 'config' | 'stats' | 'prompts';
 
 const TestGenerationFlow: React.FC = () => {
     const [testPlan, setTestPlan] = useState<{ storyTitle: string; testCases: TestCase[]; issueKey: string; zephyrResults?: any } | null>(null);
@@ -45,6 +48,7 @@ const TestGenerationFlow: React.FC = () => {
 const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('generation');
     const { generatedTestPlan, clearGeneration, isGenerating } = useGeneration();
+    const { isLoggedIn } = useAuth();
     const [testPlan, setTestPlan] = useState<{ storyTitle: string; testCases: TestCase[]; issueKey: string; zephyrResults?: any } | null>(null);
     
     // Track sidebar collapsed state for dynamic margin
@@ -76,6 +80,11 @@ const AppContent: React.FC = () => {
             setTestPlan(generatedTestPlan);
         }
     }, [generatedTestPlan]);
+
+    // Show landing page if not logged in
+    if (!isLoggedIn) {
+        return <LandingPage />;
+    }
 
     const handleViewTestPlan = () => {
         if (generatedTestPlan) {
@@ -121,9 +130,9 @@ const AppContent: React.FC = () => {
     };
 
     return (
-        <div className="flex min-h-screen bg-slate-950">
+        <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
             <Sidebar activeView={view} onViewChange={setView} />
-            <main className={`flex-1 ${sidebarCollapsed ? 'ml-16' : 'ml-64'} min-h-screen transition-all duration-300`}>
+            <main className={`flex-1 ${sidebarCollapsed ? 'ml-16' : 'ml-64'} min-h-screen transition-all duration-300 bg-slate-50 dark:bg-slate-900`}>
                 {view === 'generation' && (
                     testPlan ? (
                         <TestPlanPage
@@ -138,6 +147,7 @@ const AppContent: React.FC = () => {
                     )
                 )}
                 {view === 'rag' && <RagManagementPage />}
+                {view === 'prompts' && <PromptConfigPage />}
                 {view === 'config' && <ConfigPage />}
                 {view === 'stats' && <StatsPage onLoadTestPlan={handleLoadFromHistory} />}
             </main>
@@ -148,24 +158,14 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-    const [hasSeenLanding, setHasSeenLanding] = useState(() => {
-        const seen = localStorage.getItem('wombaHasSeenLanding');
-        return seen === 'true';
-    });
-
-    const handleEnterApp = () => {
-        localStorage.setItem('wombaHasSeenLanding', 'true');
-        setHasSeenLanding(true);
-    };
-
-    if (!hasSeenLanding) {
-        return <LandingPage onEnter={handleEnterApp} />;
-    }
-
     return (
-        <GenerationProvider>
-            <AppContent />
-        </GenerationProvider>
+        <ThemeProvider>
+            <AuthProvider>
+                <GenerationProvider>
+                    <AppContent />
+                </GenerationProvider>
+            </AuthProvider>
+        </ThemeProvider>
     );
 };
 

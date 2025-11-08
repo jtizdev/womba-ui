@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { WombaIcon, DatabaseIcon, UploadIcon } from './icons';
+import { WombaIcon, DatabaseIcon, UploadIcon, LogoutIcon } from './icons';
+import ThemeToggle from './ThemeToggle';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
-  activeView: 'generation' | 'rag' | 'config' | 'stats';
-  onViewChange: (view: 'generation' | 'rag' | 'config' | 'stats') => void;
+  activeView: 'generation' | 'rag' | 'config' | 'stats' | 'prompts';
+  onViewChange: (view: 'generation' | 'rag' | 'config' | 'stats' | 'prompts') => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
+  const { logout } = useAuth();
+  
   // Load collapsed state from localStorage
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -22,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
     setIsCollapsed(!isCollapsed);
   };
   const SidebarButton: React.FC<{ 
-    view: 'generation' | 'rag' | 'config' | 'stats'; 
+    view: 'generation' | 'rag' | 'config' | 'stats' | 'prompts'; 
     icon: React.ReactNode;
     children: React.ReactNode 
   }> = ({ view, icon, children }) => {
@@ -32,8 +36,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
         onClick={() => onViewChange(view)}
         className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-4 py-3 text-sm font-medium transition-all duration-300 relative group ${
           isActive
-            ? 'bg-indigo-600/10 text-indigo-400 border-l-4 border-indigo-500'
-            : 'text-slate-300 hover:bg-slate-800/50 hover:text-slate-100 border-l-4 border-transparent'
+            ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border-l-4 border-indigo-500'
+            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 border-l-4 border-transparent'
         }`}
         title={isCollapsed ? String(children) : ''}
       >
@@ -42,7 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
         
         {/* Tooltip for collapsed state */}
         {isCollapsed && (
-          <div className="absolute left-full ml-2 px-3 py-2 bg-slate-800 text-slate-200 text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+          <div className="absolute left-full ml-2 px-3 py-2 bg-slate-800 dark:bg-slate-700 text-slate-200 text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
             {children}
           </div>
         )}
@@ -51,9 +55,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
   };
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen ${isCollapsed ? 'w-16' : 'w-64'} bg-slate-900 border-r border-slate-800 flex flex-col z-30 transition-all duration-300`}>
+    <aside className={`fixed left-0 top-0 h-screen ${isCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-30 transition-all duration-300`}>
       {/* Branding & Toggle */}
-      <div className="p-4 border-b border-slate-800">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed && (
             <div className="flex items-center space-x-3">
@@ -119,6 +123,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
         </SidebarButton>
         
         <SidebarButton 
+          view="prompts" 
+          icon={
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          }
+        >
+          Prompts
+        </SidebarButton>
+        
+        <SidebarButton 
           view="stats" 
           icon={
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -143,7 +158,28 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+        <div className="flex justify-center">
+          <ThemeToggle />
+        </div>
+        
+        {/* Logout Button */}
+        <button
+          onClick={logout}
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-4 py-2 text-sm font-medium transition-all duration-300 text-slate-700 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-lg relative group`}
+          title={isCollapsed ? 'Logout' : ''}
+        >
+          <LogoutIcon className="w-5 h-5 flex-shrink-0" />
+          {!isCollapsed && <span>Logout</span>}
+          
+          {/* Tooltip for collapsed state */}
+          {isCollapsed && (
+            <div className="absolute left-full ml-2 px-3 py-2 bg-slate-800 dark:bg-slate-700 text-slate-200 text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+              Logout
+            </div>
+          )}
+        </button>
+        
         {!isCollapsed && (
           <p className="text-xs text-slate-500 text-center">
             Powered by AI
