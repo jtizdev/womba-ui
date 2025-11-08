@@ -82,10 +82,10 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
     });
 
     const Card: React.FC<{ title: string; children: React.ReactNode; icon?: React.ReactNode }> = ({ title, children, icon }) => (
-        <div className="bg-slate-800/50 rounded-lg shadow-lg ring-1 ring-slate-700">
-            <div className="p-4 border-b border-slate-700/50 flex items-center space-x-3">
+        <div className="bg-white dark:bg-slate-800/50 rounded-lg shadow-lg ring-1 ring-slate-200 dark:ring-slate-700">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center space-x-3">
                 {icon}
-                <h3 className="text-lg font-semibold text-slate-100">{title}</h3>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
             </div>
             <div className="p-6">{children}</div>
         </div>
@@ -97,8 +97,8 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
         color = 'text-indigo-400',
         suffix = ''
     }) => (
-        <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
-            <p className="text-slate-400 text-sm mb-1">{label}</p>
+        <div className="bg-slate-100 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-300 dark:border-slate-700">
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">{label}</p>
             <p className={`text-3xl font-bold ${color}`}>
                 {isLoadingStats ? <LoadingSpinner className="w-8 h-8" /> : `${value}${suffix}`}
             </p>
@@ -156,8 +156,8 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
         <>
             <div className="container max-w-6xl mx-auto px-4 py-8">
                 <div className="mb-8 text-center">
-                    <h2 className="text-3xl font-bold text-slate-100 mb-1">Statistics & History</h2>
-                    <p className="text-slate-400">Track your test generation activity and performance metrics.</p>
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-1">Statistics & History</h2>
+                    <p className="text-slate-600 dark:text-slate-400">Track your test generation activity and performance metrics.</p>
                 </div>
 
                 {/* Statistics Cards */}
@@ -176,7 +176,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                 <div className="mt-6">
                     <Card title="Test Generation History" icon={<ClockIcon className="w-6 h-6 text-indigo-400" />}>
                         <div className="mb-4 flex items-center space-x-2">
-                            <label className="text-sm text-slate-400">Filter:</label>
+                            <label className="text-sm text-slate-600 dark:text-slate-400">Filter:</label>
                             <button
                                 onClick={() => setStatusFilter('all')}
                                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
@@ -227,10 +227,10 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                                         return (
                                             <div
                                                 key={item.id}
-                                                className="bg-slate-900/70 border border-slate-700 rounded-md overflow-hidden"
+                                                className="bg-slate-50 dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-md overflow-hidden"
                                             >
                                                 <div 
-                                                    className="p-4 hover:bg-slate-900/90 transition-colors cursor-pointer"
+                                                    className="p-4 hover:bg-slate-100 dark:hover:bg-slate-900/90 transition-colors cursor-pointer"
                                                     onClick={() => toggleExpand(item.id)}
                                                 >
                                                     <div className="flex items-start justify-between">
@@ -282,7 +282,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                                                 </div>
                                                 
                                                 {isExpanded && (
-                                                    <div className="border-t border-slate-700 p-4 bg-slate-800/50">
+                                                                    <div className="border-t border-slate-300 dark:border-slate-700 p-4 bg-slate-100 dark:bg-slate-800/50">
                                                         {isLoading ? (
                                                             <div className="flex items-center justify-center py-4">
                                                                 <LoadingSpinner className="w-5 h-5 text-indigo-400 mr-2" />
@@ -297,8 +297,8 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                                                                     </span>
                                                                 </div>
                                                                 {item.test_plan.test_cases.map((tc, index) => (
-                                                                    <div key={index} className="bg-slate-900/70 rounded-md p-3 border border-slate-700">
-                                                                        <p className="text-sm font-medium text-slate-100 mb-2">{tc.title}</p>
+                                                                    <div key={index} className="bg-white dark:bg-slate-900/70 rounded-md p-3 border border-slate-300 dark:border-slate-700">
+                                                                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">{tc.title}</p>
                                                                         {tc.description && (
                                                                             <p className="text-xs text-slate-400 mb-2">{tc.description}</p>
                                                                         )}
@@ -306,8 +306,8 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                                                                             {tc.steps.map((step, stepIdx) => (
                                                                                 <div key={stepIdx} className="text-xs">
                                                                                     <span className="text-indigo-400">{step.step_number}.</span>{' '}
-                                                                                    <span className="text-slate-300">{step.action}</span>
-                                                                                    <div className="ml-4 text-slate-500">
+                                                                                    <span className="text-slate-700 dark:text-slate-300">{step.action}</span>
+                                                                                    <div className="ml-4 text-slate-600 dark:text-slate-500">
                                                                                         → {step.expected_result}
                                                                                     </div>
                                                                                 </div>
@@ -356,7 +356,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                                     <div className="mt-4 text-center">
                                         <button
                                             onClick={loadMore}
-                                            className="px-6 py-2 bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600 transition-colors"
+                                            className="px-6 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
                                         >
                                             Load More
                                         </button>

@@ -107,10 +107,10 @@ const ConfigPage: React.FC = () => {
     };
 
     const Card: React.FC<{ title: string; children: React.ReactNode; icon?: React.ReactNode }> = ({ title, children, icon }) => (
-        <div className="bg-slate-800/50 rounded-lg shadow-lg ring-1 ring-slate-700">
-            <div className="p-4 border-b border-slate-700/50 flex items-center space-x-3">
+        <div className="bg-white dark:bg-slate-800/50 rounded-lg shadow-lg ring-1 ring-slate-200 dark:ring-slate-700">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center space-x-3">
                 {icon}
-                <h3 className="text-lg font-semibold text-slate-100">{title}</h3>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
             </div>
             <div className="p-6">{children}</div>
         </div>
@@ -119,7 +119,7 @@ const ConfigPage: React.FC = () => {
     const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
         <input 
             {...props} 
-            className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-500" 
+            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500" 
         />
     );
 
@@ -130,7 +130,7 @@ const ConfigPage: React.FC = () => {
                 type="button"
                 onClick={() => handleValidate(service)}
                 disabled={disabled}
-                className="px-3 py-1 text-sm bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
             >
                 {status === true && <CheckCircleIcon className="w-4 h-4 text-green-400" />}
                 {status === false && <XCircleIcon className="w-4 h-4 text-red-400" />}
@@ -151,8 +151,8 @@ const ConfigPage: React.FC = () => {
         <>
             <div className="container max-w-4xl mx-auto px-4 py-8">
                 <div className="mb-8 text-center">
-                    <h2 className="text-3xl font-bold text-slate-100 mb-1">Configuration</h2>
-                    <p className="text-slate-400">Manage your Womba platform settings and API credentials.</p>
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-1">Configuration</h2>
+                    <p className="text-slate-600 dark:text-slate-400">Manage your Womba platform settings and API credentials.</p>
                 </div>
 
                 <form onSubmit={handleSave} className="space-y-6">
@@ -160,7 +160,7 @@ const ConfigPage: React.FC = () => {
                     <Card title="Atlassian Configuration" icon={<SettingsIcon className="w-6 h-6 text-indigo-400" />}>
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="atlassian_url" className="block text-sm font-medium text-slate-300 mb-1">
+                                <label htmlFor="atlassian_url" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                     Atlassian URL
                                 </label>
                                 <InputField
@@ -172,7 +172,7 @@ const ConfigPage: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="atlassian_email" className="block text-sm font-medium text-slate-300 mb-1">
+                                <label htmlFor="atlassian_email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                     Atlassian Email
                                 </label>
                                 <InputField
@@ -185,7 +185,7 @@ const ConfigPage: React.FC = () => {
                             </div>
                             <div>
                                 <div className="flex justify-between items-center mb-1">
-                                    <label htmlFor="atlassian_api_token" className="block text-sm font-medium text-slate-300">
+                                    <label htmlFor="atlassian_api_token" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                                         Atlassian API Token
                                     </label>
                                     <ValidationButton 
@@ -202,7 +202,7 @@ const ConfigPage: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="project_key" className="block text-sm font-medium text-slate-300 mb-1">
+                                <label htmlFor="project_key" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                     Default Project Key
                                 </label>
                                 <InputField
@@ -220,7 +220,7 @@ const ConfigPage: React.FC = () => {
                     <Card title="Zephyr Scale Configuration" icon={<SettingsIcon className="w-6 h-6 text-indigo-400" />}>
                         <div>
                             <div className="flex justify-between items-center mb-1">
-                                <label htmlFor="zephyr_api_token" className="block text-sm font-medium text-slate-300">
+                                <label htmlFor="zephyr_api_token" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Zephyr API Token
                                 </label>
                                 <ValidationButton 
@@ -243,7 +243,7 @@ const ConfigPage: React.FC = () => {
                         <div className="space-y-4">
                             <div>
                                 <div className="flex justify-between items-center mb-1">
-                                    <label htmlFor="openai_api_key" className="block text-sm font-medium text-slate-300">
+                                    <label htmlFor="openai_api_key" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                                         OpenAI API Key
                                     </label>
                                     <ValidationButton 
@@ -260,14 +260,14 @@ const ConfigPage: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="ai_model" className="block text-sm font-medium text-slate-300 mb-1">
+                                <label htmlFor="ai_model" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                     AI Model
                                 </label>
                                 <select
                                     id="ai_model"
                                     value={config.ai_model}
                                     onChange={e => setConfig({ ...config, ai_model: e.target.value })}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 >
                                     <option value="gpt-4o">GPT-4o</option>
                                     <option value="gpt-4">GPT-4</option>
@@ -275,14 +275,14 @@ const ConfigPage: React.FC = () => {
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="ai_tool" className="block text-sm font-medium text-slate-300 mb-1">
+                                <label htmlFor="ai_tool" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                     AI Tool
                                 </label>
                                 <select
                                     id="ai_tool"
                                     value={config.ai_tool}
                                     onChange={e => setConfig({ ...config, ai_tool: e.target.value })}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 >
                                     <option value="aider">Aider</option>
                                     <option value="other">Other</option>
@@ -295,7 +295,7 @@ const ConfigPage: React.FC = () => {
                     <Card title="Automation Configuration" icon={<SettingsIcon className="w-6 h-6 text-indigo-400" />}>
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="repo_path" className="block text-sm font-medium text-slate-300 mb-1">
+                                <label htmlFor="repo_path" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                     Repository Path
                                 </label>
                                 <InputField
@@ -307,14 +307,14 @@ const ConfigPage: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="git_provider" className="block text-sm font-medium text-slate-300 mb-1">
+                                <label htmlFor="git_provider" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                     Git Provider
                                 </label>
                                 <select
                                     id="git_provider"
                                     value={config.git_provider}
                                     onChange={e => setConfig({ ...config, git_provider: e.target.value })}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 >
                                     <option value="auto">Auto-detect</option>
                                     <option value="github">GitHub</option>
@@ -323,7 +323,7 @@ const ConfigPage: React.FC = () => {
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="default_branch" className="block text-sm font-medium text-slate-300 mb-1">
+                                <label htmlFor="default_branch" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                     Default Branch
                                 </label>
                                 <InputField
@@ -342,7 +342,7 @@ const ConfigPage: React.FC = () => {
                                     onChange={e => setConfig({ ...config, auto_upload: e.target.checked })}
                                     className="w-4 h-4 text-indigo-600 bg-slate-900 border-slate-700 rounded focus:ring-indigo-500"
                                 />
-                                <label htmlFor="auto_upload" className="text-sm font-medium text-slate-300">
+                                <label htmlFor="auto_upload" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Auto-upload to Zephyr
                                 </label>
                             </div>
@@ -354,7 +354,7 @@ const ConfigPage: React.FC = () => {
                                     onChange={e => setConfig({ ...config, auto_create_pr: e.target.checked })}
                                     className="w-4 h-4 text-indigo-600 bg-slate-900 border-slate-700 rounded focus:ring-indigo-500"
                                 />
-                                <label htmlFor="auto_create_pr" className="text-sm font-medium text-slate-300">
+                                <label htmlFor="auto_create_pr" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Auto-create Pull Requests
                                 </label>
                             </div>
