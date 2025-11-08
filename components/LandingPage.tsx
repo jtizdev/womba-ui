@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WombaIcon } from './icons';
 import { useAuth } from '../contexts/AuthContext';
+import ThemeToggle from './ThemeToggle';
 
 const LandingPage: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -50,7 +51,12 @@ const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center px-4 py-12 transition-colors duration-300">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center px-4 py-12 transition-colors duration-300 relative">
+      {/* Theme Toggle - Top Right Corner */}
+      <div className="absolute top-6 right-6">
+        <ThemeToggle />
+      </div>
+      
       <div className={`max-w-6xl w-full transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         
         {/* Hero Section */}
