@@ -50,14 +50,14 @@ export const searchJiraStories = async (query: string): Promise<JiraStory[]> => 
             console.log(`Enhanced number query to: "${enhancedQuery}"`);
         }
         
-        const url = `${API_BASE_URL}/api/v1/rag/search`;
-        // Request up to 100 results with 30% minimum similarity threshold for UI search
-        const body = JSON.stringify({ 
-            query: enhancedQuery, 
-            collection: 'jira_stories', 
-            top_k: 100,
-            min_similarity: 0.3  // 30% similarity threshold
-        });
+            const url = `${API_BASE_URL}/api/v1/rag/search`;
+            // Request up to 100 results with 10% minimum similarity threshold for UI search (more permissive)
+            const body = JSON.stringify({ 
+                query: enhancedQuery, 
+                collection: 'jira_stories', 
+                top_k: 100,
+                min_similarity: 0.1  // 10% similarity threshold - more permissive for broader matches
+            });
         
         console.log(`Making request to: ${url}`);
         console.log(`Request body:`, body);
