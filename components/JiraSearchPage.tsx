@@ -109,7 +109,7 @@ const JiraSearchPage: React.FC = () => {
                 <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-slate-200 dark:border-slate-700 shadow-lg mb-8">
                     <div ref={searchContainerRef} className="relative">
                         <div className="absolute inset-y-0 left-0 flex items-center pl-5 pointer-events-none">
-                            <SearchIcon className="w-7 h-7 text-slate-400 dark:text-slate-500" />
+                            <SearchIcon className="w-7 h-7 text-slate-500 dark:text-slate-500" />
                         </div>
                         <input
                             type="text"
@@ -118,8 +118,13 @@ const JiraSearchPage: React.FC = () => {
                             onFocus={() => query.trim() && results.length > 0 && setIsDropdownVisible(true)}
                             placeholder="e.g., PROJ-123 or 'User Authentication'"
                             autoComplete="off"
-                            className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-xl p-5 pl-14 text-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all"
+                            className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-xl p-5 pl-14 pr-14 text-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all"
                         />
+                        {isSearching && (
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-5 pointer-events-none">
+                                <LoadingSpinner className="w-6 h-6 text-indigo-500" />
+                            </div>
+                        )}
                         {isDropdownVisible && (
                             <div className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-10 max-h-80 overflow-y-auto">
                                 {isSearching ? (
