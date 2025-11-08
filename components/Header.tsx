@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { WombaIcon, BellIcon, BellSlashIcon, EyeIcon, EyeSlashIcon, ChevronLeftIcon } from './icons';
-import ThemeToggle from './ThemeToggle';
 
 const quotes = [
     "It's not a bug, it's an undocumented feature.",
