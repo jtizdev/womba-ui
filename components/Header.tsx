@@ -92,8 +92,6 @@ const Header: React.FC<HeaderProps> = ({
                     {showNotifications ? <BellIcon className="w-5 h-5" /> : <BellSlashIcon className="w-5 h-5" />}
                 </TooltipButton>
             )}
-            {/* Theme Toggle - Always visible */}
-            <ThemeToggle />
         </div>
       </div>
     </header>
