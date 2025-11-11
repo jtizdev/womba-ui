@@ -17,6 +17,7 @@ export interface JiraStory {
   id: string;
   title: string;
   description: string;
+  updated?: string;
 }
 
 export interface RagCollectionInfo {

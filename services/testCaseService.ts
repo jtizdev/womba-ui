@@ -41,7 +41,7 @@ export const searchJiraStories = async (query: string): Promise<JiraStory[]> => 
             }
         }
         
-        // Fall back to RAG search
+        // Fall back to stories search endpoint
         // Smart query enhancement: if query is just numbers, assume it's a story ID
         let enhancedQuery = query.trim();
         if (/^\d+$/.test(enhancedQuery)) {
@@ -50,13 +50,11 @@ export const searchJiraStories = async (query: string): Promise<JiraStory[]> => 
             console.log(`Enhanced number query to: "${enhancedQuery}"`);
         }
         
-            const url = `${API_BASE_URL}/api/v1/rag/search`;
-            // Request up to 100 results with 20% minimum similarity threshold for broad UI search
+            const url = `${API_BASE_URL}/api/v1/stories/search`;
+            // Request up to 100 story results (filtered, sorted by last modified DESC)
             const body = JSON.stringify({ 
                 query: enhancedQuery, 
-                collection: 'jira_stories', 
-                top_k: 100,
-                min_similarity: 0.2  // 20% similarity threshold - very permissive for UI search
+                max_results: 100
             });
         
         console.log(`Making request to: ${url}`);
@@ -79,38 +77,18 @@ export const searchJiraStories = async (query: string): Promise<JiraStory[]> => 
         const data = await response.json();
         console.log(`Search response:`, data);
         
-        // Map the RAG search results to JiraStory format
+        // Map the stories search results to JiraStory format
         if (!data.results || data.results.length === 0) {
             console.log('No results found in search response');
             return [];
         }
         
         const mappedResults = data.results.map((result: any) => {
-            // Extract story key from metadata (API returns story_key, not key)
-            const storyKey = result.metadata?.story_key || result.metadata?.key || 'UNKNOWN';
-            
-            // Extract title from metadata summary
-            const title = result.metadata?.summary || result.metadata?.title || 'No title';
-            
-            // Extract description - clean up document field if it has object representations
-            let description = result.metadata?.description || '';
-            if (!description && result.document) {
-                // Parse document field to extract description
-                const docLines = result.document.split('\n');
-                const descLine = docLines.find((line: string) => line.startsWith('Description:'));
-                if (descLine) {
-                    description = descLine.replace('Description: ', '').trim();
-                    // Remove object representations
-                    if (description.includes('<') && description.includes('object at 0x')) {
-                        description = '';
-                    }
-                }
-            }
-            
             return {
-                id: storyKey,
-                title: title,
-                description: description || '',
+                id: result.key,
+                title: result.title,
+                description: result.description || '',
+                updated: result.updated || '',
             };
         });
         
