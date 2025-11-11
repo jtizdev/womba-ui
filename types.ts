@@ -29,7 +29,7 @@ export interface RagCollectionInfo {
 export interface RagStats {
     test_plans?: RagCollectionInfo;
     confluence_docs?: RagCollectionInfo;
-    jira_stories?: RagCollectionInfo;
+    jira_issues?: RagCollectionInfo;
     existing_tests?: RagCollectionInfo;
     external_docs?: RagCollectionInfo;
     swagger_docs?: RagCollectionInfo;

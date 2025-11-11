@@ -186,7 +186,7 @@ const RagManagementPage: React.FC = () => {
                     <Card title="Database Statistics" icon={<DatabaseIcon className="w-6 h-6 text-indigo-400" />}>
                         <div className="space-y-4">
                            <StatDisplay label="Total Documents" value={stats?.total_documents ?? 0} />
-                           <StatDisplay label="Jira Stories" value={stats?.jira_stories?.count ?? 0} />
+                           <StatDisplay label="Jira Issues" value={stats?.jira_issues?.count ?? 0} />
                            <StatDisplay label="Test Plans" value={stats?.test_plans?.count ?? 0} />
                            <StatDisplay label="Existing Tests" value={stats?.existing_tests?.count ?? 0} />
                            <StatDisplay label="Confluence Docs" value={stats?.confluence_docs?.count ?? 0} />
@@ -264,7 +264,7 @@ const RagManagementPage: React.FC = () => {
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     >
                                         <option value="test_plans">Test Plans</option>
-                                        <option value="jira_stories">Jira Stories</option>
+                                                       <option value="jira_issues">Jira Issues</option>
                                         <option value="existing_tests">Existing Tests</option>
                                         <option value="confluence_docs">Confluence Docs</option>
                                         <option value="swagger_docs">Swagger Docs</option>
@@ -342,9 +342,9 @@ const RagManagementPage: React.FC = () => {
                             These actions are irreversible. Please proceed with caution.
                         </p>
                         <div className="space-y-3">
-                             <button onClick={() => openClearModal('jira_stories')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
-                                <TrashIcon className="w-4 h-4" />
-                                <span>Clear 'jira_stories' collection</span>
+                          <button onClick={() => openClearModal('jira_issues')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
+                            <TrashIcon className="w-4 h-4" />
+                                <span>Clear 'jira_issues' collection</span>
                             </button>
                             <button onClick={() => openClearModal('test_plans')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
                                 <TrashIcon className="w-4 h-4" />
