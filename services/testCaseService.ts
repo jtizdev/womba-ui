@@ -195,15 +195,25 @@ export const uploadTestCases = async (
     console.log('Uploading test cases to Zephyr:', cases.map(c => c.title));
     
     try {
-        // Call the new dedicated Zephyr upload endpoint
-        // Don't pass folder_id - let the backend use the AI-suggested folder from the test plan
+        // Call the new dedicated Zephyr upload endpoint with selected test cases
         const response = await fetch(`${API_BASE_URL}/api/v1/zephyr/upload`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 issue_key: issueKey,
-                project_key: projectKey
-                // folder_id removed - backend will use suggested_folder from test plan
+                project_key: projectKey,
+                test_cases: cases.map(tc => ({
+                    id: tc.id,
+                    title: tc.title,
+                    description: tc.description,
+                    preconditions: tc.preconditions,
+                    expected_result: tc.expected_result,
+                    priority: tc.priority,
+                    test_type: tc.test_type,
+                    tags: tc.tags,
+                    steps: tc.stepsArray || []
+                })),
+                folder_id: folderId // Pass folder_id if provided
             })
         });
         
