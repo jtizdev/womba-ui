@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { WombaIcon, DatabaseIcon, UploadIcon, LogoutIcon } from './icons';
-import { useAuth } from '../contexts/AuthContext';
+import { WombaIcon, DatabaseIcon, UploadIcon } from './icons';
 
 interface SidebarProps {
   activeView: 'generation' | 'rag' | 'config' | 'stats' | 'prompts';
@@ -8,7 +7,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
-  const { logout } = useAuth();
   
   // Load collapsed state from localStorage
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -122,17 +120,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
         </SidebarButton>
         
         <SidebarButton 
-          view="prompts" 
-          icon={
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          }
-        >
-          Prompts
-        </SidebarButton>
-        
-        <SidebarButton 
           view="stats" 
           icon={
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -158,23 +145,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-        {/* Logout Button */}
-        <button
-          onClick={logout}
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-4 py-2 text-sm font-medium transition-all duration-300 text-slate-700 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-lg relative group`}
-          title={isCollapsed ? 'Logout' : ''}
-        >
-          <LogoutIcon className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>Logout</span>}
-          
-          {/* Tooltip for collapsed state */}
-          {isCollapsed && (
-            <div className="absolute left-full ml-2 px-3 py-2 bg-slate-800 dark:bg-slate-700 text-slate-200 text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-              Logout
-            </div>
-          )}
-        </button>
-        
         {!isCollapsed && (
           <p className="text-xs text-slate-500 text-center">
             Powered by AI
