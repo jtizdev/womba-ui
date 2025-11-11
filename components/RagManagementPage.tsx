@@ -190,6 +190,8 @@ const RagManagementPage: React.FC = () => {
                            <StatDisplay label="Test Plans" value={stats?.test_plans?.count ?? 0} />
                            <StatDisplay label="Existing Tests" value={stats?.existing_tests?.count ?? 0} />
                            <StatDisplay label="Confluence Docs" value={stats?.confluence_docs?.count ?? 0} />
+                           <StatDisplay label="External Docs" value={stats?.external_docs?.count ?? 0} />
+                           <StatDisplay label="Swagger Docs" value={stats?.swagger_docs?.count ?? 0} />
                         </div>
                     </Card>
                     <Card title="Index Single Story" icon={<UploadIcon className="w-6 h-6 text-indigo-400" />}>
@@ -264,9 +266,10 @@ const RagManagementPage: React.FC = () => {
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     >
                                         <option value="test_plans">Test Plans</option>
-                                                       <option value="jira_issues">Jira Issues</option>
+                                        <option value="jira_issues">Jira Issues</option>
                                         <option value="existing_tests">Existing Tests</option>
                                         <option value="confluence_docs">Confluence Docs</option>
+                                        <option value="external_docs">External Docs</option>
                                         <option value="swagger_docs">Swagger Docs</option>
                                     </select>
                                 </div>
