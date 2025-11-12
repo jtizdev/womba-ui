@@ -34,6 +34,7 @@ export const searchJiraStories = async (query: string): Promise<JiraStory[]> => 
                         id: story.key,
                         title: story.summary || 'No title',
                         description: story.description || '',
+                        updated: story.updated || '',
                     }];
                 }
             } catch (e) {

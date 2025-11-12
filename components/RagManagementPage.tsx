@@ -346,7 +346,7 @@ const RagManagementPage: React.FC = () => {
                         </p>
                         <div className="space-y-3">
                           <button onClick={() => openClearModal('jira_issues')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
-                            <TrashIcon className="w-4 h-4" />
+                                <TrashIcon className="w-4 h-4" />
                                 <span>Clear 'jira_issues' collection</span>
                             </button>
                             <button onClick={() => openClearModal('test_plans')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
