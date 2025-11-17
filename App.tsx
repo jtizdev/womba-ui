@@ -7,7 +7,6 @@ import StatsPage from './components/StatsPage';
 import Sidebar from './components/Nav';
 import GenerationToast from './components/GenerationToast';
 import LoadingIndicator from './components/LoadingIndicator';
-import ThemeToggle from './components/ThemeToggle';
 import { GenerationProvider, useGeneration } from './contexts/GenerationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -124,11 +123,6 @@ const AppContent: React.FC = () => {
 
     return (
         <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900 relative">
-            {/* Theme Toggle - Top Right Corner (same as landing page) */}
-            <div className="fixed top-6 right-6 z-50">
-                <ThemeToggle />
-            </div>
-            
             <Sidebar activeView={view} onViewChange={setView} />
             <main className={`flex-1 ${sidebarCollapsed ? 'ml-16' : 'ml-64'} min-h-screen transition-all duration-300 bg-slate-50 dark:bg-slate-900`}>
                 {view === 'generation' && (
