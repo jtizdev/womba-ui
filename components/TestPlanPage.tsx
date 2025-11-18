@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { TestCase } from '../types';
-import { uploadTestCases } from '../services/testCaseService';
+import { uploadTestCases, updateTestPlan } from '../services/testCaseService';
 import TestCaseCard from './TestCaseCard';
 import ActionBar from './ActionBar';
 import Header from './Header';
@@ -64,20 +64,35 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
     }
   };
   
-  const handleAddNewTestCase = useCallback(() => {
+  const handleAddNewTestCase = useCallback(async () => {
     const newTestCase: TestCase = {
         id: `TC-MANUAL-${Date.now()}`,
         title: 'New Manual Test Case',
         steps: `1. 
 2. 
 3. Verify Result: `,
+        stepsArray: [
+            { step_number: 1, action: '', expected_result: '' },
+            { step_number: 2, action: '', expected_result: '' },
+            { step_number: 3, action: 'Verify Result', expected_result: '' }
+        ],
         isSelected: false,
         isExpanded: true,
     };
-    setTestCases(prev => [newTestCase, ...prev]);
+    const updatedTestCases = [newTestCase, ...testCases];
+    setTestCases(updatedTestCases);
     setCurrentPage(1); // Go to the first page to see the new case
-    triggerNotification('Added a new blank test case.', 'info');
-  }, [triggerNotification]);
+    
+    // Update test plan on backend
+    try {
+        const projectKeyToUse = issueKey.split('-')[0];
+        await updateTestPlan(issueKey, updatedTestCases, false, projectKeyToUse);
+        triggerNotification('Added a new blank test case and updated test plan.', 'success');
+    } catch (error) {
+        console.error('Failed to update test plan:', error);
+        triggerNotification('Added test case locally, but failed to update test plan on server.', 'error');
+    }
+  }, [testCases, issueKey, triggerNotification]);
 
 
   const handleToggleSelect = useCallback((id: string) => {
@@ -128,7 +143,7 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
     setTestCaseToDelete({ id, title });
   }, []);
 
-  const confirmRemove = useCallback(() => {
+  const confirmRemove = useCallback(async () => {
     if (!testCaseToDelete) return;
 
     const testCaseIndex = testCases.findIndex(tc => tc.id === testCaseToDelete.id);
@@ -144,19 +159,36 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
         setCurrentPage(prev => prev - 1);
     }
 
-    triggerNotification(`Removed: "${testCaseToDelete.title}"`, 'info', handleUndoRemove);
+    // Update test plan on backend
+    try {
+        const projectKeyToUse = issueKey.split('-')[0];
+        await updateTestPlan(issueKey, newTestCases, false, projectKeyToUse);
+        triggerNotification(`Removed: "${testCaseToDelete.title}" and updated test plan.`, 'info', handleUndoRemove);
+    } catch (error) {
+        console.error('Failed to update test plan:', error);
+        triggerNotification(`Removed: "${testCaseToDelete.title}" locally, but failed to update test plan on server.`, 'error', handleUndoRemove);
+    }
 
     setTestCaseToDelete(null); // Close modal
-  }, [testCaseToDelete, testCases, triggerNotification, handleUndoRemove, currentPage]);
+  }, [testCaseToDelete, testCases, issueKey, triggerNotification, handleUndoRemove, currentPage]);
 
 
-  const handleUpdateTestCase = useCallback((id: string, newTitle: string, newSteps: string) => {
-    setTestCases(prev =>
-      prev.map(tc =>
-        tc.id === id ? { ...tc, title: newTitle, steps: newSteps } : tc
-      )
+  const handleUpdateTestCase = useCallback(async (id: string, newTitle: string, newSteps: string) => {
+    const updatedTestCases = testCases.map(tc =>
+      tc.id === id ? { ...tc, title: newTitle, steps: newSteps } : tc
     );
-  }, []);
+    setTestCases(updatedTestCases);
+    
+    // Update test plan on backend
+    try {
+        const projectKeyToUse = issueKey.split('-')[0];
+        await updateTestPlan(issueKey, updatedTestCases, false, projectKeyToUse);
+        triggerNotification('Test case updated and test plan saved.', 'success');
+    } catch (error) {
+        console.error('Failed to update test plan:', error);
+        triggerNotification('Test case updated locally, but failed to update test plan on server.', 'error');
+    }
+  }, [testCases, issueKey, triggerNotification]);
   
   const handleUploadSingle = useCallback(async (testCaseToUpload: TestCase) => {
     if (isBulkUploading || uploadingCardId) return;

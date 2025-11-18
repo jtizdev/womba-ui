@@ -531,3 +531,133 @@ export const getHistoryDetails = async (id: string): Promise<HistoryItem> => {
         throw error;
     }
 };
+
+/**
+ * Gets an existing test plan.
+ * Calls `GET /api/v1/test-plans/{issue_key}`.
+ */
+export const getTestPlan = async (issueKey: string): Promise<any> => {
+    console.log(`Fetching test plan for ${issueKey}`);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/test-plans/${issueKey}`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch test plan');
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Failed to fetch test plan:', error);
+        throw error;
+    }
+};
+
+/**
+ * Updates an existing test plan.
+ * Calls `PUT /api/v1/test-plans/{issue_key}`.
+ * 
+ * @param issueKey The Jira issue key (e.g., "PLAT-13541").
+ * @param testCases Array of test cases to update the plan with.
+ * @param uploadToZephyr Whether to upload to Zephyr after update.
+ * @param projectKey Project key for Zephyr upload.
+ * @returns A promise that resolves to the updated test plan.
+ */
+export const updateTestPlan = async (
+    issueKey: string,
+    testCases: TestCase[],
+    uploadToZephyr: boolean = false,
+    projectKey?: string
+): Promise<{ test_plan: any; zephyr_results?: any; message: string }> => {
+    console.log(`Updating test plan for ${issueKey} with ${testCases.length} test cases`);
+    
+    try {
+        // Convert TestCase objects to the format expected by the API
+        const testCasesPayload = testCases.map(tc => {
+            // Parse steps if it's a string, otherwise use stepsArray
+            let stepsArray = tc.stepsArray || [];
+            
+            // If we have a steps string but no stepsArray, try to parse it
+            if (typeof tc.steps === 'string' && tc.steps.trim() && (!tc.stepsArray || tc.stepsArray.length === 0)) {
+                // Try to parse steps from string format (e.g., "1. Action\n   Expected: Result\n\n2. Action2")
+                const lines = tc.steps.split('\n');
+                stepsArray = [];
+                let currentStep: any = null;
+                
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    
+                    // Check if line starts with a number (step number)
+                    const stepMatch = trimmed.match(/^(\d+)\.\s*(.+)$/);
+                    if (stepMatch) {
+                        // Save previous step if exists
+                        if (currentStep) {
+                            stepsArray.push(currentStep);
+                        }
+                        // Start new step
+                        currentStep = {
+                            step_number: parseInt(stepMatch[1]),
+                            action: stepMatch[2],
+                            expected_result: '',
+                            test_data: ''
+                        };
+                    } else if (trimmed.toLowerCase().startsWith('expected')) {
+                        // Expected result line
+                        const expectedMatch = trimmed.match(/expected[:\s]+(.+)$/i);
+                        if (expectedMatch && currentStep) {
+                            currentStep.expected_result = expectedMatch[1].trim();
+                        }
+                    } else if (currentStep) {
+                        // Continuation of action
+                        currentStep.action += ' ' + trimmed;
+                    }
+                }
+                
+                // Add last step
+                if (currentStep) {
+                    stepsArray.push(currentStep);
+                }
+            }
+            
+            return {
+                id: tc.id,
+                title: tc.title,
+                description: tc.description || '',
+                preconditions: tc.preconditions || '',
+                expected_result: tc.expected_result || '',
+                priority: tc.priority || 'medium',
+                test_type: tc.test_type || 'functional',
+                tags: tc.tags || [],
+                steps: stepsArray.map((step: any, idx: number) => ({
+                    step_number: step.step_number || idx + 1,
+                    action: step.action || '',
+                    expected_result: step.expected_result || '',
+                    test_data: step.test_data || ''
+                }))
+            };
+        });
+        
+        const response = await fetch(`${API_BASE_URL}/api/v1/test-plans/${issueKey}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                test_cases: testCasesPayload,
+                upload_to_zephyr: uploadToZephyr,
+                project_key: projectKey
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to update test plan: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Test plan updated successfully:', data);
+        return data;
+    } catch (error) {
+        console.error('Failed to update test plan:', error);
+        throw error;
+    }
+};
