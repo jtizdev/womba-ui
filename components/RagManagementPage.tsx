@@ -243,7 +243,7 @@ const RagManagementPage: React.FC = () => {
                                    required={!defaultProjectKey}
                                />
                             </div>
-                            <SubmitButton isLoading={isIndexing} disabled={!storyKey || (!projectKey.trim() && !defaultProjectKey)}>
+                            <SubmitButton isLoading={isIndexing} disabled={!storyKey || !hasProjectKey}>
                                 {isIndexing ? 'Indexing...' : 'Index Story'}
                             </SubmitButton>
                         </form>
