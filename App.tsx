@@ -5,7 +5,6 @@ import RagManagementPage from './components/RagManagementPage';
 import ConfigPage from './components/ConfigPage';
 import StatsPage from './components/StatsPage';
 import Sidebar from './components/Nav';
-import GenerationToast from './components/GenerationToast';
 import LoadingIndicator from './components/LoadingIndicator';
 import { GenerationProvider, useGeneration } from './contexts/GenerationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -143,7 +142,6 @@ const AppContent: React.FC = () => {
                 {view === 'stats' && <StatsPage onLoadTestPlan={handleLoadFromHistory} />}
             </main>
             {isGenerating && <LoadingIndicator message="Generating test plan..." />}
-            <GenerationToast onViewTestPlan={handleViewTestPlan} />
         </div>
     );
 };
