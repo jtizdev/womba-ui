@@ -7,6 +7,39 @@ import Notification from './Notification';
 type NotificationType = 'success' | 'error' | 'info';
 type NotificationState = { id: number; message: string; type: NotificationType };
 
+// Move all helper components outside to prevent recreation on every render
+const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = React.memo((props) => (
+    <input {...props} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500" />
+));
+InputField.displayName = 'InputField';
+
+const Card: React.FC<{ title: string; children: React.ReactNode, icon?: React.ReactNode }> = React.memo(({ title, children, icon }) => (
+    <div className="bg-white dark:bg-slate-800/50 rounded-lg shadow-lg ring-1 ring-slate-200 dark:ring-slate-700 h-full flex flex-col">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center space-x-3">
+            {icon}
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+        </div>
+        <div className="p-6 flex-grow">{children}</div>
+    </div>
+));
+Card.displayName = 'Card';
+
+const StatDisplay: React.FC<{label: string; value: number | string | undefined}> = React.memo(({label, value}) => (
+    <div className="flex justify-between items-baseline p-3 bg-slate-100 dark:bg-slate-900/50 rounded-md">
+        <span className="text-slate-600 dark:text-slate-400 text-sm">{label}</span>
+        <span className="text-2xl font-bold text-indigo-400">{value ?? <LoadingSpinner className="w-5 h-5" />}</span>
+    </div>
+));
+StatDisplay.displayName = 'StatDisplay';
+
+const SubmitButton: React.FC<{isLoading: boolean; children: React.ReactNode, disabled?: boolean}> = React.memo(({isLoading, children, disabled}) => (
+    <button type="submit" disabled={isLoading || disabled} className="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed">
+        {isLoading ? <LoadingSpinner className="w-5 h-5 mr-2" /> : <UploadIcon className="w-5 h-5 mr-2" />}
+        {children}
+    </button>
+));
+SubmitButton.displayName = 'SubmitButton';
+
 const RagManagementPage: React.FC = () => {
     const [stats, setStats] = useState<RagStats | null>(null);
     const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -147,33 +180,6 @@ const RagManagementPage: React.FC = () => {
         }
     };
 
-    const Card: React.FC<{ title: string; children: React.ReactNode, icon?: React.ReactNode }> = ({ title, children, icon }) => (
-        <div className="bg-white dark:bg-slate-800/50 rounded-lg shadow-lg ring-1 ring-slate-200 dark:ring-slate-700 h-full flex flex-col">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center space-x-3">
-                {icon}
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
-            </div>
-            <div className="p-6 flex-grow">{children}</div>
-        </div>
-    );
-
-    const StatDisplay: React.FC<{label: string; value: number | string | undefined}> = ({label, value}) => (
-         <div className="flex justify-between items-baseline p-3 bg-slate-100 dark:bg-slate-900/50 rounded-md">
-            <span className="text-slate-600 dark:text-slate-400 text-sm">{label}</span>
-            <span className="text-2xl font-bold text-indigo-400">{value ?? <LoadingSpinner className="w-5 h-5" />}</span>
-        </div>
-    );
-    
-    const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
-        <input {...props} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500" />
-    );
-
-    const SubmitButton: React.FC<{isLoading: boolean; children: React.ReactNode, disabled?: boolean}> = ({isLoading, children, disabled}) => (
-        <button type="submit" disabled={isLoading || disabled} className="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed">
-            {isLoading ? <LoadingSpinner className="w-5 h-5 mr-2" /> : <UploadIcon className="w-5 h-5 mr-2" />}
-            {children}
-        </button>
-    );
 
     return (
         <>
