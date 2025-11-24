@@ -382,11 +382,25 @@ export const searchRag = async (
         });
         
         if (!response.ok) {
-            throw new Error('Failed to search RAG');
+            const errorText = await response.text();
+            throw new Error(`Failed to search RAG: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();
-        return data.results;
+        
+        // Map API response to UI format
+        // API returns results with 'similarity' field, UI expects 'score'
+        if (!data.results || !Array.isArray(data.results)) {
+            console.warn('Invalid search response format:', data);
+            return [];
+        }
+        
+        return data.results.map((result: any) => ({
+            document: result.document || '',
+            metadata: result.metadata || {},
+            // API returns 'similarity' (0-1), convert to 'score' for UI
+            score: result.similarity !== undefined ? result.similarity : (result.score !== undefined ? result.score : (result.distance !== undefined ? 1 - result.distance : 0))
+        }));
     } catch (error) {
         console.error('Failed to search RAG:', error);
         throw error;

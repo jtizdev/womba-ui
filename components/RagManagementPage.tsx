@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RagStats, RagSearchResult } from '../types';
-import { getRagStats, indexStory, batchIndexTests, indexAll, clearRagCollection, searchRag } from '../services/testCaseService';
-import { DatabaseIcon, LoadingSpinner, TrashIcon, UploadIcon, AlertTriangleIcon, SearchIcon } from './icons';
+import { getRagStats, indexStory, batchIndexTests, indexAll, searchRag } from '../services/testCaseService';
+import { DatabaseIcon, LoadingSpinner, UploadIcon, SearchIcon } from './icons';
 import Notification from './Notification';
-import ConfirmationModal from './ConfirmationModal';
 
 type NotificationType = 'success' | 'error' | 'info';
 type NotificationState = { id: number; message: string; type: NotificationType };
@@ -12,7 +11,6 @@ const RagManagementPage: React.FC = () => {
     const [stats, setStats] = useState<RagStats | null>(null);
     const [isLoadingStats, setIsLoadingStats] = useState(true);
     const [notifications, setNotifications] = useState<NotificationState[]>([]);
-    const [modalState, setModalState] = useState<{ isOpen: boolean; collectionToClear: string | null }>({ isOpen: false, collectionToClear: null });
 
     const [storyKey, setStoryKey] = useState('');
     const [projectKey, setProjectKey] = useState('');
@@ -31,6 +29,16 @@ const RagManagementPage: React.FC = () => {
     const [searchTopK, setSearchTopK] = useState('10');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<RagSearchResult[]>([]);
+
+    // Auto-detect story key pattern and switch to jira_issues collection
+    useEffect(() => {
+        const jiraKeyPattern = /^[A-Z]+-\d+$/i;
+        if (jiraKeyPattern.test(searchQuery.trim())) {
+            if (searchCollection !== 'jira_issues') {
+                setSearchCollection('jira_issues');
+            }
+        }
+    }, [searchQuery, searchCollection]);
 
     const triggerNotification = useCallback((message: string, type: NotificationType) => {
         const newNotification = { id: Date.now(), message, type };
@@ -108,22 +116,6 @@ const RagManagementPage: React.FC = () => {
         }
     };
 
-    const openClearModal = (collection: string) => {
-        setModalState({ isOpen: true, collectionToClear: collection });
-    };
-
-    const handleClearCollection = async () => {
-        if (!modalState.collectionToClear) return;
-        const collection = modalState.collectionToClear;
-        setModalState({ isOpen: false, collectionToClear: null }); // Close modal immediately
-        try {
-            const result = await clearRagCollection(collection);
-            triggerNotification(result.message, 'success');
-            fetchStats(); // Refresh stats
-        } catch (error) {
-            triggerNotification(`Failed to clear collection: ${collection}.`, 'error');
-        }
-    };
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -137,10 +129,19 @@ const RagManagementPage: React.FC = () => {
                 parseInt(searchTopK, 10),
                 searchProjectKey || undefined
             );
-            setSearchResults(results);
-            triggerNotification(`Found ${results.length} results`, 'success');
+            // Ensure results is an array and has valid structure
+            if (Array.isArray(results)) {
+                setSearchResults(results);
+                triggerNotification(`Found ${results.length} results`, 'success');
+            } else {
+                console.error('Invalid search results format:', results);
+                triggerNotification('Invalid search results format.', 'error');
+                setSearchResults([]);
+            }
         } catch (error) {
-            triggerNotification('Failed to search RAG database.', 'error');
+            console.error('Search error:', error);
+            triggerNotification(`Failed to search RAG database: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+            setSearchResults([]);
         } finally {
             setIsSearching(false);
         }
@@ -258,7 +259,12 @@ const RagManagementPage: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="searchCollection" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Collection</label>
+                                    <label htmlFor="searchCollection" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                        Collection
+                                        {searchQuery.match(/^[A-Z]+-\d+$/i) && searchCollection !== 'jira_issues' && (
+                                            <span className="ml-2 text-xs text-yellow-600 dark:text-yellow-400">(Tip: Story keys are in "Jira Issues")</span>
+                                        )}
+                                    </label>
                                     <select 
                                         id="searchCollection"
                                         value={searchCollection}
@@ -266,7 +272,7 @@ const RagManagementPage: React.FC = () => {
                                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     >
                                         <option value="test_plans">Test Plans</option>
-                                        <option value="jira_issues">Jira Issues</option>
+                                        <option value="jira_issues">Jira Issues (Stories)</option>
                                         <option value="existing_tests">Existing Tests</option>
                                         <option value="confluence_docs">Confluence Docs</option>
                                         <option value="external_docs">External Docs</option>
@@ -310,15 +316,15 @@ const RagManagementPage: React.FC = () => {
                                         <div key={index} className="bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-md p-4">
                                             <div className="flex justify-between items-start mb-2">
                                                 <span className="text-xs font-mono text-slate-400">
-                                                    Score: {result.score.toFixed(3)}
+                                                    Score: {typeof result.score === 'number' ? result.score.toFixed(3) : 'N/A'}
                                                 </span>
-                                                {result.metadata?.key && (
+                                                {(result.metadata?.key || result.metadata?.story_key) && (
                                                     <span className="text-xs font-mono text-indigo-400">
-                                                        {result.metadata.key}
+                                                        {result.metadata.key || result.metadata.story_key}
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-3">{result.document}</p>
+                                            <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-3">{result.document || 'No document content'}</p>
                                             {result.metadata && (
                                                 <div className="mt-2 text-xs text-slate-500">
                                                     {result.metadata.project_key && (
@@ -336,30 +342,6 @@ const RagManagementPage: React.FC = () => {
                         )}
                     </Card>
                 </div>
-
-                {/* Danger Zone - Centered at Bottom */}
-                <div className="mt-12 mb-8 max-w-2xl mx-auto">
-                    <Card title="Danger Zone" icon={<AlertTriangleIcon className="w-6 h-6 text-red-400" />}>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 text-center">
-                            <AlertTriangleIcon className="w-5 h-5 inline-block mr-1 text-red-400" />
-                            These actions are irreversible. Please proceed with caution.
-                        </p>
-                        <div className="space-y-3">
-                          <button onClick={() => openClearModal('jira_issues')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
-                                <TrashIcon className="w-4 h-4" />
-                                <span>Clear 'jira_issues' collection</span>
-                            </button>
-                            <button onClick={() => openClearModal('test_plans')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
-                                <TrashIcon className="w-4 h-4" />
-                                <span>Clear 'test_plans' collection</span>
-                            </button>
-                            <button onClick={() => openClearModal('existing_tests')} className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
-                                <TrashIcon className="w-4 h-4" />
-                                <span>Clear 'existing_tests' collection</span>
-                            </button>
-                        </div>
-                    </Card>
-                </div>
             </div>
 
             <div className="fixed top-20 right-5 w-full max-w-sm z-50 flex flex-col space-y-3">
@@ -374,21 +356,6 @@ const RagManagementPage: React.FC = () => {
                 ))}
             </div>
 
-            <ConfirmationModal
-                isOpen={modalState.isOpen}
-                title="Confirm Collection Deletion"
-                message={
-                    <>
-                        Are you sure you want to permanently delete all data from the
-                        <strong className="font-semibold text-slate-200 mx-1">
-                            '{modalState.collectionToClear}'
-                        </strong>
-                        collection? This action cannot be undone.
-                    </>
-                }
-                onConfirm={handleClearCollection}
-                onCancel={() => setModalState({ isOpen: false, collectionToClear: null })}
-            />
         </>
     );
 };
