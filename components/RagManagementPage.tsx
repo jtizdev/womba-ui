@@ -186,8 +186,8 @@ const RagManagementPage: React.FC = () => {
             );
             // Ensure results is an array and has valid structure
             if (Array.isArray(results)) {
-                setSearchResults(results);
-                triggerNotification(`Found ${results.length} results`, 'success');
+            setSearchResults(results);
+            triggerNotification(`Found ${results.length} results`, 'success');
             } else {
                 console.error('Invalid search results format:', results);
                 triggerNotification('Invalid search results format.', 'error');
