@@ -122,7 +122,7 @@ const RagManagementPage: React.FC = () => {
     const handleIndexStory = async (e: React.FormEvent) => {
         e.preventDefault();
         // Use default project key if not provided
-        const projectKeyToUse = projectKey || defaultProjectKey;
+        const projectKeyToUse = projectKey.trim() || defaultProjectKey;
         if (!storyKey || !projectKeyToUse || isIndexing) return;
         setIsIndexing(true);
         try {
@@ -243,7 +243,7 @@ const RagManagementPage: React.FC = () => {
                                    required={!defaultProjectKey}
                                />
                             </div>
-                            <SubmitButton isLoading={isIndexing} disabled={!storyKey || (!projectKey && !defaultProjectKey)}>
+                            <SubmitButton isLoading={isIndexing} disabled={!storyKey || (!projectKey.trim() && !defaultProjectKey)}>
                                 {isIndexing ? 'Indexing...' : 'Index Story'}
                             </SubmitButton>
                         </form>
