@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RagStats, RagSearchResult } from '../types';
-import { getRagStats, indexStory, batchIndexTests, indexAll, searchRag } from '../services/testCaseService';
+import { RagStats, RagSearchResult, Config } from '../types';
+import { getRagStats, indexStory, batchIndexTests, indexAll, searchRag, getConfig } from '../services/testCaseService';
 import { DatabaseIcon, LoadingSpinner, UploadIcon, SearchIcon } from './icons';
 import Notification from './Notification';
 
@@ -44,6 +44,7 @@ const RagManagementPage: React.FC = () => {
     const [stats, setStats] = useState<RagStats | null>(null);
     const [isLoadingStats, setIsLoadingStats] = useState(true);
     const [notifications, setNotifications] = useState<NotificationState[]>([]);
+    const [defaultProjectKey, setDefaultProjectKey] = useState<string>('');
 
     const [storyKey, setStoryKey] = useState('');
     const [projectKey, setProjectKey] = useState('');
@@ -99,15 +100,36 @@ const RagManagementPage: React.FC = () => {
         fetchStats();
     }, [fetchStats]);
 
+    // Fetch default project key from config
+    useEffect(() => {
+        const loadConfig = async () => {
+            try {
+                const config = await getConfig();
+                if (config.project_key) {
+                    setDefaultProjectKey(config.project_key);
+                    // Set default values for project key fields
+                    setProjectKey(config.project_key);
+                    setBatchProjectKey(config.project_key);
+                    setIndexAllProjectKey(config.project_key);
+                }
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        };
+        loadConfig();
+    }, []);
+
     const handleIndexStory = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!storyKey || !projectKey || isIndexing) return;
+        // Use default project key if not provided
+        const projectKeyToUse = projectKey || defaultProjectKey;
+        if (!storyKey || !projectKeyToUse || isIndexing) return;
         setIsIndexing(true);
         try {
-            const result = await indexStory(storyKey, projectKey);
+            const result = await indexStory(storyKey, projectKeyToUse);
             triggerNotification(result.message, 'success');
             setStoryKey('');
-            setProjectKey('');
+            setProjectKey(defaultProjectKey); // Reset to default, not empty
             fetchStats(); // Refresh stats after indexing
         } catch (error) {
             triggerNotification('Failed to index story.', 'error');
@@ -208,10 +230,20 @@ const RagManagementPage: React.FC = () => {
                                <InputField id="storyKey" type="text" value={storyKey} onChange={e => setStoryKey(e.target.value)} placeholder="e.g., PROJ-123" required />
                             </div>
                              <div>
-                               <label htmlFor="projectKey" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Project Key</label>
-                               <InputField id="projectKey" type="text" value={projectKey} onChange={e => setProjectKey(e.target.value)} placeholder="e.g., PROJ" required />
+                               <label htmlFor="projectKey" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                   Project Key {!defaultProjectKey && <span className="text-red-500">*</span>}
+                                   {defaultProjectKey && <span className="text-xs text-slate-500 ml-1">(default: {defaultProjectKey})</span>}
+                               </label>
+                               <InputField 
+                                   id="projectKey" 
+                                   type="text" 
+                                   value={projectKey} 
+                                   onChange={e => setProjectKey(e.target.value)} 
+                                   placeholder={defaultProjectKey || "e.g., PROJ"} 
+                                   required={!defaultProjectKey}
+                               />
                             </div>
-                            <SubmitButton isLoading={isIndexing} disabled={!storyKey || !projectKey}>
+                            <SubmitButton isLoading={isIndexing} disabled={!storyKey || (!projectKey && !defaultProjectKey)}>
                                 {isIndexing ? 'Indexing...' : 'Index Story'}
                             </SubmitButton>
                         </form>
