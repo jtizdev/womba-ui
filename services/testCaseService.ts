@@ -315,11 +315,11 @@ export const batchIndexTests = async (projectKey: string, maxTests: number): Pro
  * This may take a long time depending on data volume.
  */
 export const indexAll = async (projectKey: string): Promise<any> => {
-    console.log(`Indexing all tests for project ${projectKey}`);
+    console.log(`Indexing all data for project ${projectKey}`);
     
     try {
-        // Use a very high limit to essentially get "all"
-        const response = await fetch(`${API_BASE_URL}/api/v1/rag/index/batch?project_key=${projectKey}&max_tests=100000`, {
+        // Use the proper index-all endpoint that indexes everything (tests + stories + confluence + external docs + swagger)
+        const response = await fetch(`${API_BASE_URL}/api/v1/rag/index/all?project_key=${projectKey}&force=true`, {
             method: 'POST'
         });
         
