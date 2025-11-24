@@ -107,8 +107,8 @@ const RagManagementPage: React.FC = () => {
                 const config = await getConfig();
                 if (config.project_key) {
                     setDefaultProjectKey(config.project_key);
-                    // Set default values for project key fields
-                    setProjectKey(config.project_key);
+                    // Only set batch/index all project keys, not the single story one
+                    // User can leave it empty to use default, or type to override
                     setBatchProjectKey(config.project_key);
                     setIndexAllProjectKey(config.project_key);
                 }
