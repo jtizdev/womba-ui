@@ -33,12 +33,12 @@ const RagManagementPage: React.FC = () => {
     // Auto-detect story key pattern and switch to jira_issues collection
     useEffect(() => {
         const jiraKeyPattern = /^[A-Z]+-\d+$/i;
-        if (jiraKeyPattern.test(searchQuery.trim())) {
-            if (searchCollection !== 'jira_issues') {
-                setSearchCollection('jira_issues');
-            }
+        const trimmedQuery = searchQuery.trim();
+        if (jiraKeyPattern.test(trimmedQuery)) {
+            // Only update if collection is different to avoid unnecessary re-renders
+            setSearchCollection(prev => prev !== 'jira_issues' ? 'jira_issues' : prev);
         }
-    }, [searchQuery, searchCollection]);
+    }, [searchQuery]); // Only depend on searchQuery to prevent re-render loop
 
     const triggerNotification = useCallback((message: string, type: NotificationType) => {
         const newNotification = { id: Date.now(), message, type };

@@ -53,11 +53,6 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-lg sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 relative">
-      <div className="absolute top-2 right-4">
-        <span className="px-2 py-1 text-xs font-semibold text-yellow-800 dark:text-yellow-200 bg-yellow-200 dark:bg-yellow-800 rounded-md">
-          BETA
-        </span>
-      </div>
       <div className="container max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex-1">
             {onBackToSearch && (
