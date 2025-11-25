@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { TestCase } from '../types';
-import { uploadTestCases, updateTestPlan } from '../services/testCaseService';
+import { uploadTestCases, updateTestPlan, getTestPlan } from '../services/testCaseService';
 import TestCaseCard from './TestCaseCard';
 import ActionBar from './ActionBar';
 import Header from './Header';
@@ -174,19 +174,128 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
 
 
   const handleUpdateTestCase = useCallback(async (id: string, newTitle: string, newSteps: string) => {
-    const updatedTestCases = testCases.map(tc =>
-      tc.id === id ? { ...tc, title: newTitle, steps: newSteps } : tc
-    );
-    setTestCases(updatedTestCases);
-    
-    // Update test plan on backend
+    // Update test plan on backend first
     try {
         const projectKeyToUse = issueKey.split('-')[0];
+        
+        // Find the test case being updated to preserve all its fields
+        const testCaseToUpdate = testCases.find(tc => tc.id === id);
+        if (!testCaseToUpdate) {
+            console.error(`Test case with id ${id} not found`);
+            triggerNotification('Test case not found.', 'error');
+            return;
+        }
+        
+        // Update the test case preserving all fields, especially stepsArray
+        const updatedTestCases = testCases.map(tc => {
+            if (tc.id === id) {
+                // Parse newSteps back to stepsArray if needed
+                let newStepsArray = tc.stepsArray || [];
+                if (typeof newSteps === 'string' && newSteps.trim()) {
+                    // Parse steps string to structured format
+                    const lines = newSteps.split('\n');
+                    newStepsArray = [];
+                    let currentStep: any = null;
+                    
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed) continue;
+                        
+                        // Check if line starts with a number (step number)
+                        const stepMatch = trimmed.match(/^(\d+)\.\s*(.+)$/);
+                        if (stepMatch) {
+                            // Save previous step if exists
+                            if (currentStep) {
+                                newStepsArray.push(currentStep);
+                            }
+                            // Start new step
+                            currentStep = {
+                                step_number: parseInt(stepMatch[1]),
+                                action: stepMatch[2],
+                                expected_result: '',
+                                test_data: ''
+                            };
+                        } else if (trimmed.toLowerCase().startsWith('expected')) {
+                            // Expected result line
+                            const expectedMatch = trimmed.match(/expected[:\s]+(.+)$/i);
+                            if (expectedMatch && currentStep) {
+                                currentStep.expected_result = expectedMatch[1].trim();
+                            }
+                        } else if (currentStep) {
+                            // Continuation of action
+                            currentStep.action += ' ' + trimmed;
+                        }
+                    }
+                    
+                    // Add last step
+                    if (currentStep) {
+                        newStepsArray.push(currentStep);
+                    }
+                }
+                
+                return {
+                    ...tc,
+                    title: newTitle,
+                    steps: newSteps,
+                    stepsArray: newStepsArray  // Preserve structured steps
+                };
+            }
+            return tc;
+        });
+        
+        console.log(`Updating test case ${id} with title: ${newTitle}`);
+        console.log(`Sending ${updatedTestCases.length} test cases to backend`);
+        
         await updateTestPlan(issueKey, updatedTestCases, false, projectKeyToUse);
-        triggerNotification('Test case updated and test plan saved.', 'success');
+        
+        // Reload test plan from server to ensure UI matches backend
+        const response = await getTestPlan(issueKey);
+        if (response.test_plan && response.test_plan.test_cases) {
+            // Convert API format to UI format
+            const reloadedTestCases: TestCase[] = response.test_plan.test_cases.map((tc: any, index: number) => {
+                const existingTc = testCases.find(t => {
+                    // Try to match by ID first
+                    if (tc.id && t.id === tc.id) return true;
+                    // Fallback: match by generated ID pattern
+                    const generatedId = `TC-${issueKey}-${index + 1}`;
+                    if (t.id === generatedId) return true;
+                    // Fallback: match by title (if ID doesn't exist)
+                    if (!tc.id && t.title === tc.title) return true;
+                    return false;
+                });
+                
+                return {
+                    id: tc.id || `TC-${issueKey}-${index + 1}`,
+                    title: tc.title,
+                    description: tc.description,
+                    preconditions: tc.preconditions,
+                    expected_result: tc.expected_result,
+                    priority: tc.priority,
+                    test_type: tc.test_type,
+                    tags: tc.tags,
+                    steps: tc.steps.map((step: any, idx: number) => 
+                        `${step.step_number || idx + 1}. ${step.action}\n   Expected: ${step.expected_result}`
+                    ).join('\n'),
+                    stepsArray: tc.steps,  // Store structured steps
+                    isSelected: existingTc?.isSelected || false,
+                    isExpanded: existingTc?.isExpanded || false,
+                };
+            });
+            
+            setTestCases(reloadedTestCases);
+            triggerNotification('Test case updated and test plan saved.', 'success');
+        } else {
+            // Fallback: update local state if reload fails
+            const updatedTestCases = testCases.map(tc =>
+              tc.id === id ? { ...tc, title: newTitle, steps: newSteps } : tc
+            );
+            setTestCases(updatedTestCases);
+            triggerNotification('Test case updated, but failed to reload from server.', 'warning');
+        }
     } catch (error) {
         console.error('Failed to update test plan:', error);
-        triggerNotification('Test case updated locally, but failed to update test plan on server.', 'error');
+        triggerNotification(`Failed to update test plan on server: ${error}`, 'error');
+        // Don't update local state on error - keep original
     }
   }, [testCases, issueKey, triggerNotification]);
   

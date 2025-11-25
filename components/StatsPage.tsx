@@ -138,7 +138,13 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                 setLoadingDetails(prev => new Set([...prev, itemId]));
                 try {
                     const details = await getHistoryDetails(itemId);
-                    setHistory(prev => prev.map(h => h.id === itemId ? details : h));
+                    // Update history item with details, and also update test_count if test_plan is loaded
+                    const updatedDetails = {
+                        ...details,
+                        // Update test_count from test_plan if available (more accurate than stored count)
+                        test_count: details.test_plan?.test_cases?.length ?? details.test_count
+                    };
+                    setHistory(prev => prev.map(h => h.id === itemId ? updatedDetails : h));
                 } catch (error) {
                     triggerNotification('Failed to load test plan details.', 'error');
                 } finally {
@@ -258,7 +264,9 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                                                                 </div>
                                                                 <div className="flex items-center space-x-4 text-sm text-slate-400">
                                                                     <span>
-                                                                        <span className="font-semibold text-slate-300">{item.test_count}</span> test cases
+                                                                        <span className="font-semibold text-slate-300">
+                                                                            {item.test_plan?.test_cases?.length ?? item.test_count}
+                                                                        </span> test cases
                                                                     </span>
                                                                     <span>Duration: {formatDuration(item.duration)}</span>
                                                                     {item.zephyr_ids && item.zephyr_ids.length > 0 && (
