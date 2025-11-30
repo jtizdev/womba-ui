@@ -49,7 +49,8 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
   const [editedExpectedResult, setEditedExpectedResult] = useState(testCase.expected_result || '');
   const [editedPriority, setEditedPriority] = useState(testCase.priority || 'medium');
   const [editedTestType, setEditedTestType] = useState(testCase.test_type || 'functional');
-  const [editedTags, setEditedTags] = useState(testCase.tags?.join(', ') || '');
+  const [editedTags, setEditedTags] = useState<string[]>(testCase.tags || []);
+  const [tagInput, setTagInput] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('script');
 
   useEffect(() => {
@@ -66,7 +67,8 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
     setEditedExpectedResult(testCase.expected_result || '');
     setEditedPriority(testCase.priority || 'medium');
     setEditedTestType(testCase.test_type || 'functional');
-    setEditedTags(testCase.tags?.join(', ') || '');
+    setEditedTags(testCase.tags || []);
+    setTagInput('');
   }, [testCase]);
 
   const handleSave = () => {
@@ -78,7 +80,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
       expected_result: editedExpectedResult,
       priority: editedPriority,
       test_type: editedTestType,
-      tags: editedTags.split(',').map(t => t.trim()).filter(t => t.length > 0)
+      tags: editedTags
     });
     setIsEditing(false);
   };
@@ -91,8 +93,35 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
     setEditedExpectedResult(testCase.expected_result || '');
     setEditedPriority(testCase.priority || 'medium');
     setEditedTestType(testCase.test_type || 'functional');
-    setEditedTags(testCase.tags?.join(', ') || '');
+    setEditedTags(testCase.tags || []);
+    setTagInput('');
     setIsEditing(false);
+  };
+
+  const handleAddTagFromInput = () => {
+    const value = tagInput.trim();
+    if (!value) return;
+    if (!editedTags.includes(value)) {
+      setEditedTags(prev => [...prev, value]);
+    }
+    setTagInput('');
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      handleAddTagFromInput();
+      return;
+    }
+
+    if (e.key === 'Backspace' && tagInput === '' && editedTags.length > 0) {
+      e.preventDefault();
+      setEditedTags(prev => prev.slice(0, prev.length - 1));
+    }
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setEditedTags(prev => prev.filter(t => t !== tag));
   };
 
   return (
@@ -327,13 +356,31 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
                 <div>
                   <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Tags</h4>
                   {isEditing ? (
-                    <input
-                      type="text"
-                      value={editedTags}
-                      onChange={(e) => setEditedTags(e.target.value)}
-                      placeholder="Enter tags separated by commas..."
-                      className="w-full bg-slate-700 p-2 rounded-md text-slate-300 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                    />
+                    <div className="flex flex-wrap items-center gap-2 bg-slate-700/60 rounded-md p-2">
+                      {editedTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center px-2 py-1 rounded-full bg-slate-800 text-slate-200 text-xs"
+                        >
+                          <span>{tag}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTag(tag)}
+                            className="ml-1 text-slate-400 hover:text-slate-200"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        type="text"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={handleTagKeyDown}
+                        placeholder={editedTags.length === 0 ? 'Type a tag and press Enter…' : 'Add another tag…'}
+                        className="flex-1 min-w-[120px] bg-transparent outline-none text-slate-200 text-sm placeholder:text-slate-500"
+                      />
+                    </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {testCase.tags && testCase.tags.length > 0 ? (

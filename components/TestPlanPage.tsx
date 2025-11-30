@@ -90,8 +90,7 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
     setTestCases(updatedTestCases);
     setCurrentPage(1); // Go to the first page to see the new case
     
-    // Don't save to backend yet - let user edit first, then save via the card's Save button
-    triggerNotification('New test case added. Edit and save to persist changes.', 'info');
+    // Don't notify or save to backend yet - let user edit first, then save via the card's Save button
   }, [testCases, triggerNotification]);
 
 
