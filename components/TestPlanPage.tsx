@@ -36,6 +36,7 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
   const [highlightAssertions, setHighlightAssertions] = useState(true);
   const [testCaseToDelete, setTestCaseToDelete] = useState<{ id: string; title: string } | null>(null);
   const [lastRemoved, setLastRemoved] = useState<{ testCase: TestCase; index: number } | null>(null);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [uploadStats, setUploadStats] = useState<{ count: number; zephyrIds: string[]; folderPath?: string } | null>(null);
@@ -171,6 +172,42 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
 
     setTestCaseToDelete(null); // Close modal
   }, [testCaseToDelete, testCases, issueKey, triggerNotification, handleUndoRemove, currentPage]);
+
+  const handleBulkDelete = useCallback(() => {
+    const selectedCases = testCases.filter(tc => tc.isSelected);
+    if (selectedCases.length === 0) {
+      triggerNotification("No test cases selected for deletion.", "error");
+      return;
+    }
+    setShowBulkDeleteModal(true);
+  }, [testCases, triggerNotification]);
+
+  const confirmBulkDelete = useCallback(async () => {
+    const selectedCases = testCases.filter(tc => tc.isSelected);
+    if (selectedCases.length === 0) return;
+
+    const selectedIds = new Set(selectedCases.map(tc => tc.id));
+    const newTestCases = testCases.filter(tc => !selectedIds.has(tc.id));
+    setTestCases(newTestCases);
+
+    // Adjust pagination if needed
+    const newTotalPages = Math.max(1, Math.ceil(newTestCases.length / ITEMS_PER_PAGE));
+    if (currentPage > newTotalPages) {
+      setCurrentPage(newTotalPages);
+    }
+
+    // Update test plan on backend
+    try {
+      const projectKeyToUse = issueKey.split('-')[0];
+      await updateTestPlan(issueKey, newTestCases, false, projectKeyToUse);
+      triggerNotification(`Deleted ${selectedCases.length} test case${selectedCases.length > 1 ? 's' : ''} and updated test plan.`, 'success');
+    } catch (error) {
+      console.error('Failed to update test plan:', error);
+      triggerNotification(`Deleted ${selectedCases.length} test case${selectedCases.length > 1 ? 's' : ''} locally, but failed to update test plan on server.`, 'error');
+    }
+
+    setShowBulkDeleteModal(false);
+  }, [testCases, currentPage, issueKey, triggerNotification]);
 
 
   const handleUpdateTestCase = useCallback(async (id: string, newTitle: string, newSteps: string) => {
@@ -476,6 +513,17 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
                     )}
                     {testCases.length > 0 && !allSelected && <ActionButton onClick={handleSelectAll}><span>Select All</span></ActionButton>}
                     {selectedCount > 0 && <ActionButton onClick={handleUnselectAll}><span>Unselect All</span></ActionButton>}
+                    {selectedCount > 0 && (
+                      <button 
+                        onClick={handleBulkDelete}
+                        className="flex items-center space-x-2 text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span>Delete Selected ({selectedCount})</span>
+                      </button>
+                    )}
                 </div>
             </div>
             {paginatedTestCases.length > 0 ? (
@@ -540,6 +588,19 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
         }
         onConfirm={confirmRemove}
         onCancel={() => setTestCaseToDelete(null)}
+      />
+      <ConfirmationModal
+        isOpen={showBulkDeleteModal}
+        title="Delete Selected Test Cases"
+        message={
+            <>
+                Are you sure you want to delete <strong className="text-red-400">{selectedCount}</strong> selected test case{selectedCount > 1 ? 's' : ''}?
+                <br />
+                <span className="text-slate-400 text-sm mt-2 inline-block">This action cannot be undone.</span>
+            </>
+        }
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setShowBulkDeleteModal(false)}
       />
     </>
   );
