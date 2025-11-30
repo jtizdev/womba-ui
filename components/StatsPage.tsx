@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Stats, HistoryItem } from '../types';
-import { getStats, getHistory, getHistoryDetails } from '../services/testCaseService';
-import { ChartBarIcon, LoadingSpinner, ClockIcon, CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChevronRightIcon } from './icons';
+import { getStats, getHistory, getHistoryDetails, deleteTestPlan } from '../services/testCaseService';
+import { ChartBarIcon, LoadingSpinner, ClockIcon, CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChevronRightIcon, TrashIcon } from './icons';
+import ConfirmationModal from './ConfirmationModal';
 import Notification from './Notification';
 
 type NotificationType = 'success' | 'error' | 'info';
@@ -22,6 +23,8 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
     const [historyPage, setHistoryPage] = useState(0);
     const [hasMoreHistory, setHasMoreHistory] = useState(true);
     const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failed'>('all');
+    const [itemToDelete, setItemToDelete] = useState<{ id: string; storyKey: string } | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const ITEMS_PER_PAGE = 20;
 
@@ -158,6 +161,31 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
         }
     };
 
+    const handleDeleteClick = (e: React.MouseEvent, item: HistoryItem) => {
+        e.stopPropagation(); // Prevent expanding the item
+        setItemToDelete({ id: item.id, storyKey: item.story_key });
+    };
+
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
+        
+        setIsDeleting(true);
+        try {
+            await deleteTestPlan(itemToDelete.storyKey);
+            // Remove from local history
+            setHistory(prev => prev.filter(h => h.story_key !== itemToDelete.storyKey));
+            // Refresh stats
+            fetchStats();
+            triggerNotification(`Test plan for ${itemToDelete.storyKey} deleted successfully.`, 'success');
+        } catch (error) {
+            console.error('Failed to delete test plan:', error);
+            triggerNotification(`Failed to delete test plan for ${itemToDelete.storyKey}.`, 'error');
+        } finally {
+            setIsDeleting(false);
+            setItemToDelete(null);
+        }
+    };
+
     return (
         <>
             <div className="container max-w-6xl mx-auto px-4 py-8">
@@ -277,15 +305,24 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <span
-                                                            className={`px-2 py-1 text-xs font-semibold rounded flex-shrink-0 ${
-                                                                item.status === 'success'
-                                                                    ? 'bg-green-900/30 text-green-400'
-                                                                    : 'bg-red-900/30 text-red-400'
-                                                            }`}
-                                                        >
-                                                            {item.status}
-                                                        </span>
+                                                        <div className="flex items-center space-x-2 flex-shrink-0">
+                                                            <span
+                                                                className={`px-2 py-1 text-xs font-semibold rounded ${
+                                                                    item.status === 'success'
+                                                                        ? 'bg-green-900/30 text-green-400'
+                                                                        : 'bg-red-900/30 text-red-400'
+                                                                }`}
+                                                            >
+                                                                {item.status}
+                                                            </span>
+                                                            <button
+                                                                onClick={(e) => handleDeleteClick(e, item)}
+                                                                className="p-1.5 rounded-md hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                                                                title="Delete test plan"
+                                                            >
+                                                                <TrashIcon className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 
@@ -393,6 +430,20 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                     />
                 ))}
             </div>
+
+            <ConfirmationModal
+                isOpen={!!itemToDelete}
+                title="Delete Test Plan"
+                message={
+                    <>
+                        Are you sure you want to delete the test plan for <strong className="text-red-400">{itemToDelete?.storyKey}</strong>?
+                        <br />
+                        <span className="text-slate-400 text-sm mt-2 inline-block">This will permanently remove the test plan from storage.</span>
+                    </>
+                }
+                onConfirm={confirmDelete}
+                onCancel={() => setItemToDelete(null)}
+            />
         </>
     );
 };

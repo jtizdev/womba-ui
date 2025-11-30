@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { TestCase } from '../types';
-import { uploadTestCases, updateTestPlan, getTestPlan } from '../services/testCaseService';
+import { uploadTestCases, updateTestPlan, getTestPlan, deleteTestPlan } from '../services/testCaseService';
 import TestCaseCard from './TestCaseCard';
 import ActionBar from './ActionBar';
 import Header from './Header';
@@ -65,17 +65,23 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
     }
   };
   
-  const handleAddNewTestCase = useCallback(async () => {
+  const handleAddNewTestCase = useCallback(() => {
     const newTestCase: TestCase = {
         id: `TC-MANUAL-${Date.now()}`,
-        title: 'New Manual Test Case',
-        steps: `1. 
-2. 
-3. Verify Result: `,
+        title: 'Untitled Test Case',
+        description: '',
+        preconditions: '',
+        expected_result: '',
+        priority: 'medium',
+        test_type: 'functional',
+        tags: [],
+        steps: `1. Navigate to the target page or feature
+2. Perform the action being tested
+3. Verify: The expected outcome is achieved`,
         stepsArray: [
-            { step_number: 1, action: '', expected_result: '' },
-            { step_number: 2, action: '', expected_result: '' },
-            { step_number: 3, action: 'Verify Result', expected_result: '' }
+            { step_number: 1, action: 'Navigate to the target page or feature', expected_result: 'Page loads successfully' },
+            { step_number: 2, action: 'Perform the action being tested', expected_result: 'Action completes without errors' },
+            { step_number: 3, action: 'Verify the expected outcome', expected_result: 'Expected result is displayed' }
         ],
         isSelected: false,
         isExpanded: true,
@@ -84,16 +90,9 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
     setTestCases(updatedTestCases);
     setCurrentPage(1); // Go to the first page to see the new case
     
-    // Update test plan on backend
-    try {
-        const projectKeyToUse = issueKey.split('-')[0];
-        await updateTestPlan(issueKey, updatedTestCases, false, projectKeyToUse);
-        triggerNotification('Added a new blank test case and updated test plan.', 'success');
-    } catch (error) {
-        console.error('Failed to update test plan:', error);
-        triggerNotification('Added test case locally, but failed to update test plan on server.', 'error');
-    }
-  }, [testCases, issueKey, triggerNotification]);
+    // Don't save to backend yet - let user edit first, then save via the card's Save button
+    triggerNotification('New test case added. Edit and save to persist changes.', 'info');
+  }, [testCases, triggerNotification]);
 
 
   const handleToggleSelect = useCallback((id: string) => {
@@ -188,6 +187,10 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
 
     const selectedIds = new Set(selectedCases.map(tc => tc.id));
     const newTestCases = testCases.filter(tc => !selectedIds.has(tc.id));
+    
+    // Check if deleting ALL test cases
+    const isDeletingAll = newTestCases.length === 0;
+
     setTestCases(newTestCases);
 
     // Adjust pagination if needed
@@ -196,21 +199,40 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
       setCurrentPage(newTotalPages);
     }
 
-    // Update test plan on backend
     try {
-      const projectKeyToUse = issueKey.split('-')[0];
-      await updateTestPlan(issueKey, newTestCases, false, projectKeyToUse);
-      triggerNotification(`Deleted ${selectedCases.length} test case${selectedCases.length > 1 ? 's' : ''} and updated test plan.`, 'success');
+      if (isDeletingAll) {
+        // Delete entire test plan from RAG
+        await deleteTestPlan(issueKey);
+        triggerNotification(`Deleted all ${selectedCases.length} test cases. Test plan removed from storage.`, 'success');
+        // Navigate back to search since there's nothing left
+        onBackToSearch();
+      } else {
+        // Update test plan with remaining test cases
+        const projectKeyToUse = issueKey.split('-')[0];
+        await updateTestPlan(issueKey, newTestCases, false, projectKeyToUse);
+        triggerNotification(`Deleted ${selectedCases.length} test case${selectedCases.length > 1 ? 's' : ''} and updated test plan.`, 'success');
+      }
     } catch (error) {
-      console.error('Failed to update test plan:', error);
-      triggerNotification(`Deleted ${selectedCases.length} test case${selectedCases.length > 1 ? 's' : ''} locally, but failed to update test plan on server.`, 'error');
+      console.error('Failed to update/delete test plan:', error);
+      triggerNotification(`Deleted ${selectedCases.length} test case${selectedCases.length > 1 ? 's' : ''} locally, but failed to update server.`, 'error');
     }
 
     setShowBulkDeleteModal(false);
-  }, [testCases, currentPage, issueKey, triggerNotification]);
+  }, [testCases, currentPage, issueKey, triggerNotification, onBackToSearch]);
 
 
-  const handleUpdateTestCase = useCallback(async (id: string, newTitle: string, newSteps: string) => {
+  interface UpdatedTestCaseFields {
+    title: string;
+    steps: string;
+    description?: string;
+    preconditions?: string;
+    expected_result?: string;
+    priority?: string;
+    test_type?: string;
+    tags?: string[];
+  }
+
+  const handleUpdateTestCase = useCallback(async (id: string, updates: UpdatedTestCaseFields) => {
     // Update test plan on backend first
     try {
         const projectKeyToUse = issueKey.split('-')[0];
@@ -228,9 +250,9 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
             if (tc.id === id) {
                 // Parse newSteps back to stepsArray if needed
                 let newStepsArray = tc.stepsArray || [];
-                if (typeof newSteps === 'string' && newSteps.trim()) {
+                if (typeof updates.steps === 'string' && updates.steps.trim()) {
                     // Parse steps string to structured format
-                    const lines = newSteps.split('\n');
+                    const lines = updates.steps.split('\n');
                     newStepsArray = [];
                     let currentStep: any = null;
                     
@@ -272,15 +294,21 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
                 
                 return {
                     ...tc,
-                    title: newTitle,
-                    steps: newSteps,
+                    title: updates.title,
+                    steps: updates.steps,
+                    description: updates.description ?? tc.description,
+                    preconditions: updates.preconditions ?? tc.preconditions,
+                    expected_result: updates.expected_result ?? tc.expected_result,
+                    priority: updates.priority ?? tc.priority,
+                    test_type: updates.test_type ?? tc.test_type,
+                    tags: updates.tags ?? tc.tags,
                     stepsArray: newStepsArray  // Preserve structured steps
                 };
             }
             return tc;
         });
         
-        console.log(`Updating test case ${id} with title: ${newTitle}`);
+        console.log(`Updating test case ${id} with title: ${updates.title}`);
         console.log(`Sending ${updatedTestCases.length} test cases to backend`);
         
         await updateTestPlan(issueKey, updatedTestCases, false, projectKeyToUse);
@@ -324,7 +352,7 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
         } else {
             // Fallback: update local state if reload fails
             const updatedTestCases = testCases.map(tc =>
-              tc.id === id ? { ...tc, title: newTitle, steps: newSteps } : tc
+              tc.id === id ? { ...tc, ...updates } : tc
             );
             setTestCases(updatedTestCases);
             triggerNotification('Test case updated, but failed to reload from server.', 'warning');
@@ -591,13 +619,25 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
       />
       <ConfirmationModal
         isOpen={showBulkDeleteModal}
-        title="Delete Selected Test Cases"
+        title={selectedCount === testCases.length ? "Delete Entire Test Plan" : "Delete Selected Test Cases"}
         message={
-            <>
-                Are you sure you want to delete <strong className="text-red-400">{selectedCount}</strong> selected test case{selectedCount > 1 ? 's' : ''}?
-                <br />
-                <span className="text-slate-400 text-sm mt-2 inline-block">This action cannot be undone.</span>
-            </>
+            selectedCount === testCases.length ? (
+                <>
+                    <span className="text-amber-400 font-semibold">Warning:</span> You are about to delete <strong className="text-red-400">all {selectedCount}</strong> test cases.
+                    <br />
+                    <span className="text-amber-300 text-sm mt-2 inline-block">
+                        This will permanently remove the entire test plan from storage.
+                    </span>
+                    <br />
+                    <span className="text-slate-400 text-sm mt-1 inline-block">This action cannot be undone.</span>
+                </>
+            ) : (
+                <>
+                    Are you sure you want to delete <strong className="text-red-400">{selectedCount}</strong> selected test case{selectedCount > 1 ? 's' : ''}?
+                    <br />
+                    <span className="text-slate-400 text-sm mt-2 inline-block">This action cannot be undone.</span>
+                </>
+            )
         }
         onConfirm={confirmBulkDelete}
         onCancel={() => setShowBulkDeleteModal(false)}

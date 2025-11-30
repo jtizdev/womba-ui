@@ -675,3 +675,33 @@ export const updateTestPlan = async (
         throw error;
     }
 };
+
+/**
+ * Deletes a test plan from RAG storage.
+ * Calls `DELETE /api/v1/test-plans/{issue_key}`.
+ * 
+ * @param issueKey The Jira issue key (e.g., "PLAT-13541").
+ * @returns A promise that resolves to the deletion result.
+ */
+export const deleteTestPlan = async (issueKey: string): Promise<{ success: boolean; message: string }> => {
+    console.log(`Deleting test plan for ${issueKey}`);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/test-plans/${issueKey}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to delete test plan: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Test plan deleted successfully:', data);
+        return data;
+    } catch (error) {
+        console.error('Failed to delete test plan:', error);
+        throw error;
+    }
+};

@@ -2,10 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { TestCase } from '../types';
 import { CheckIcon, EditIcon, SaveIcon, CancelIcon, ChevronDownIcon, TrashIcon, UploadIcon, LoadingSpinner } from './icons';
 
+interface UpdatedTestCase {
+  title: string;
+  steps: string;
+  description?: string;
+  preconditions?: string;
+  expected_result?: string;
+  priority?: string;
+  test_type?: string;
+  tags?: string[];
+}
+
 interface TestCaseCardProps {
   testCase: TestCase;
   onToggleSelect: (id: string) => void;
-  onUpdate: (id: string, newTitle: string, newSteps: string) => void;
+  onUpdate: (id: string, updates: UpdatedTestCase) => void;
   onRemove: (id: string, title: string) => void;
   onToggleExpand: (id: string) => void;
   onUploadSingle: (testCase: TestCase) => void;
@@ -33,6 +44,12 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(testCase.title);
   const [editedSteps, setEditedSteps] = useState(testCase.steps);
+  const [editedDescription, setEditedDescription] = useState(testCase.description || '');
+  const [editedPreconditions, setEditedPreconditions] = useState(testCase.preconditions || '');
+  const [editedExpectedResult, setEditedExpectedResult] = useState(testCase.expected_result || '');
+  const [editedPriority, setEditedPriority] = useState(testCase.priority || 'medium');
+  const [editedTestType, setEditedTestType] = useState(testCase.test_type || 'functional');
+  const [editedTags, setEditedTags] = useState(testCase.tags?.join(', ') || '');
   const [activeTab, setActiveTab] = useState<TabType>('script');
 
   useEffect(() => {
@@ -44,16 +61,37 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
   useEffect(() => {
     setEditedTitle(testCase.title);
     setEditedSteps(testCase.steps);
-  }, [testCase.title, testCase.steps]);
+    setEditedDescription(testCase.description || '');
+    setEditedPreconditions(testCase.preconditions || '');
+    setEditedExpectedResult(testCase.expected_result || '');
+    setEditedPriority(testCase.priority || 'medium');
+    setEditedTestType(testCase.test_type || 'functional');
+    setEditedTags(testCase.tags?.join(', ') || '');
+  }, [testCase]);
 
   const handleSave = () => {
-    onUpdate(testCase.id, editedTitle, editedSteps);
+    onUpdate(testCase.id, {
+      title: editedTitle,
+      steps: editedSteps,
+      description: editedDescription,
+      preconditions: editedPreconditions,
+      expected_result: editedExpectedResult,
+      priority: editedPriority,
+      test_type: editedTestType,
+      tags: editedTags.split(',').map(t => t.trim()).filter(t => t.length > 0)
+    });
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setEditedTitle(testCase.title);
     setEditedSteps(testCase.steps);
+    setEditedDescription(testCase.description || '');
+    setEditedPreconditions(testCase.preconditions || '');
+    setEditedExpectedResult(testCase.expected_result || '');
+    setEditedPriority(testCase.priority || 'medium');
+    setEditedTestType(testCase.test_type || 'functional');
+    setEditedTags(testCase.tags?.join(', ') || '');
     setIsEditing(false);
   };
 
@@ -222,47 +260,94 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
 
             {activeTab === 'details' && (
               <div className="space-y-3">
-                {testCase.description && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Description</h4>
-                    <p className="text-slate-300 text-sm">{testCase.description}</p>
-                  </div>
-                )}
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Description</h4>
+                  {isEditing ? (
+                    <AutoResizingTextarea
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      placeholder="Enter a description for this test case..."
+                      className="w-full bg-slate-700 p-3 rounded-md text-slate-300 font-sans text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none"
+                      rows={3}
+                    />
+                  ) : (
+                    <p className="text-slate-300 text-sm" onDoubleClick={() => setIsEditing(true)}>
+                      {testCase.description || <span className="text-slate-500 italic">No description. Double-click to edit.</span>}
+                    </p>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
-                  {testCase.priority && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Priority</h4>
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Priority</h4>
+                    {isEditing ? (
+                      <select
+                        value={editedPriority}
+                        onChange={(e) => setEditedPriority(e.target.value)}
+                        className="w-full bg-slate-700 p-2 rounded-md text-slate-300 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                    ) : (
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         testCase.priority === 'critical' ? 'bg-red-500/20 text-red-300' :
                         testCase.priority === 'high' ? 'bg-orange-500/20 text-orange-300' :
                         testCase.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
                         'bg-slate-500/20 text-slate-300'
                       }`}>
-                        {testCase.priority}
+                        {testCase.priority || 'medium'}
                       </span>
-                    </div>
-                  )}
-                  {testCase.test_type && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Test Type</h4>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Test Type</h4>
+                    {isEditing ? (
+                      <select
+                        value={editedTestType}
+                        onChange={(e) => setEditedTestType(e.target.value)}
+                        className="w-full bg-slate-700 p-2 rounded-md text-slate-300 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      >
+                        <option value="functional">Functional</option>
+                        <option value="integration">Integration</option>
+                        <option value="regression">Regression</option>
+                        <option value="smoke">Smoke</option>
+                        <option value="e2e">E2E</option>
+                        <option value="api">API</option>
+                        <option value="ui">UI</option>
+                      </select>
+                    ) : (
                       <span className="inline-block px-2 py-1 rounded bg-indigo-500/20 text-indigo-300 text-xs font-medium">
-                        {testCase.test_type}
+                        {testCase.test_type || 'functional'}
                       </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Tags</h4>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editedTags}
+                      onChange={(e) => setEditedTags(e.target.value)}
+                      placeholder="Enter tags separated by commas..."
+                      className="w-full bg-slate-700 p-2 rounded-md text-slate-300 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {testCase.tags && testCase.tags.length > 0 ? (
+                        testCase.tags.map((tag, idx) => (
+                          <span key={idx} className="px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs">
+                            {tag}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-500 italic text-sm" onDoubleClick={() => setIsEditing(true)}>No tags. Double-click to edit.</span>
+                      )}
                     </div>
                   )}
                 </div>
-                {testCase.tags && testCase.tags.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Tags</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {testCase.tags.map((tag, idx) => (
-                        <span key={idx} className="px-2 py-1 rounded bg-slate-700 text-slate-300 text-xs">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -270,9 +355,19 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
               <div>
                 <div className="bg-slate-900/50 rounded-md p-4">
                   <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Preconditions</h4>
-                  <p className="text-slate-300 text-sm">
-                    {testCase.preconditions || 'No preconditions specified for this test case.'}
-                  </p>
+                  {isEditing ? (
+                    <AutoResizingTextarea
+                      value={editedPreconditions}
+                      onChange={(e) => setEditedPreconditions(e.target.value)}
+                      placeholder="Enter preconditions for this test case..."
+                      className="w-full bg-slate-700 p-3 rounded-md text-slate-300 font-sans text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none"
+                      rows={3}
+                    />
+                  ) : (
+                    <p className="text-slate-300 text-sm" onDoubleClick={() => setIsEditing(true)}>
+                      {testCase.preconditions || <span className="text-slate-500 italic">No preconditions specified. Double-click to edit.</span>}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -281,9 +376,19 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
               <div>
                 <div className="bg-slate-900/50 rounded-md p-4">
                   <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Expected Result</h4>
-                  <p className="text-slate-300 text-sm">
-                    {testCase.expected_result || 'Test should complete successfully with all steps passing.'}
-                  </p>
+                  {isEditing ? (
+                    <AutoResizingTextarea
+                      value={editedExpectedResult}
+                      onChange={(e) => setEditedExpectedResult(e.target.value)}
+                      placeholder="Enter the expected result for this test case..."
+                      className="w-full bg-slate-700 p-3 rounded-md text-slate-300 font-sans text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none"
+                      rows={3}
+                    />
+                  ) : (
+                    <p className="text-slate-300 text-sm" onDoubleClick={() => setIsEditing(true)}>
+                      {testCase.expected_result || <span className="text-slate-500 italic">No expected result specified. Double-click to edit.</span>}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
