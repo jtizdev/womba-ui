@@ -138,3 +138,11 @@ export interface UploadToCycleResult {
   errors: string[];
   test_case_results: Record<string, string>;
 }
+
+export interface SuggestFolderResult {
+  suggested_folder_id?: string | null;
+  suggested_folder_path?: string | null;
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+  available_folders: ZephyrFolder[];
+}

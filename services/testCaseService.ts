@@ -1,4 +1,4 @@
-import { TestCase, JiraStory, RagStats, GenerateTestPlanResponse, Config, Stats, HistoryItem, RagSearchResult, ZephyrFolder, UploadToCycleResult } from '../types';
+import { TestCase, JiraStory, RagStats, GenerateTestPlanResponse, Config, Stats, HistoryItem, RagSearchResult, ZephyrFolder, UploadToCycleResult, SuggestFolderResult } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -808,5 +808,80 @@ export const uploadToTestCycle = async (
     } catch (error) {
         console.error('Failed to upload to test cycle:', error);
         throw error;
+    }
+};
+
+/**
+ * Suggests the best folder for a test cycle based on the story's fix version.
+ * Uses AI to match the fix version to available folders.
+ * Calls `POST /api/v1/zephyr/suggest-folder`.
+ * 
+ * @param projectKey The Jira project key (e.g., "PLAT").
+ * @param fixVersion The fix version from the Jira story.
+ * @param folderType The folder type: "TEST_CASE" or "TEST_CYCLE".
+ * @returns A promise that resolves to the suggested folder result.
+ */
+export const suggestFolder = async (
+    projectKey: string,
+    fixVersion: string,
+    folderType: string = 'TEST_CYCLE'
+): Promise<SuggestFolderResult> => {
+    console.log(`Suggesting folder for fix version: "${fixVersion}"`);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/zephyr/suggest-folder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_key: projectKey,
+                fix_version: fixVersion,
+                folder_type: folderType
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to suggest folder: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Folder suggestion result:', data);
+        
+        return {
+            suggested_folder_id: data.suggested_folder_id,
+            suggested_folder_path: data.suggested_folder_path,
+            confidence: data.confidence || 'medium',
+            reason: data.reason || '',
+            available_folders: data.available_folders || []
+        };
+    } catch (error) {
+        console.error('Failed to suggest folder:', error);
+        throw error;
+    }
+};
+
+/**
+ * Fetches the fix version for a Jira story.
+ * Calls `GET /api/v1/stories/{issue_key}`.
+ * 
+ * @param issueKey The Jira issue key (e.g., "PLAT-12345").
+ * @returns A promise that resolves to the fix versions array.
+ */
+export const getStoryFixVersions = async (issueKey: string): Promise<string[]> => {
+    console.log(`Fetching fix versions for story ${issueKey}`);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/stories/${issueKey}`);
+        
+        if (!response.ok) {
+            console.warn(`Could not fetch story ${issueKey}: ${response.status}`);
+            return [];
+        }
+        
+        const story = await response.json();
+        return story.fix_versions || [];
+    } catch (error) {
+        console.error('Failed to fetch story fix versions:', error);
+        return [];
     }
 };

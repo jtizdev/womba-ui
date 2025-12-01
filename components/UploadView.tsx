@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { TestCase, ZephyrFolder, UploadToCycleResult } from '../types';
-import { getZephyrFolders, uploadToTestCycle } from '../services/testCaseService';
-import { LoadingSpinner, FolderIcon, CycleIcon, CheckIcon, AlertIcon, ChevronLeftIcon } from './icons';
+import { TestCase, ZephyrFolder, UploadToCycleResult, SuggestFolderResult } from '../types';
+import { getZephyrFolders, uploadToTestCycle, suggestFolder, getStoryFixVersions } from '../services/testCaseService';
+import { LoadingSpinner, FolderIcon, CycleIcon, CheckIcon, AlertIcon, ChevronLeftIcon, SparklesIcon } from './icons';
 
 interface UploadViewProps {
   issueKey: string;
@@ -12,7 +12,7 @@ interface UploadViewProps {
   onSuccess: (result: UploadToCycleResult) => void;
 }
 
-type FolderOption = 'latest' | 'select' | 'create';
+type FolderOption = 'recommended' | 'select' | 'create';
 
 const UploadView: React.FC<UploadViewProps> = ({
   issueKey,
@@ -24,18 +24,21 @@ const UploadView: React.FC<UploadViewProps> = ({
 }) => {
   // Form state
   const [cycleName, setCycleName] = useState('');
-  const [folderOption, setFolderOption] = useState<FolderOption>('latest');
+  const [folderOption, setFolderOption] = useState<FolderOption>('recommended');
   const [selectedFolderId, setSelectedFolderId] = useState<string>('');
   const [customFolderPath, setCustomFolderPath] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Loading states
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
+  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
   // Data state
   const [folders, setFolders] = useState<ZephyrFolder[]>([]);
   const [latestFolder, setLatestFolder] = useState<ZephyrFolder | null>(null);
+  const [suggestedFolder, setSuggestedFolder] = useState<SuggestFolderResult | null>(null);
+  const [fixVersions, setFixVersions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   
   // Refs for auto-scrolling
@@ -47,12 +50,13 @@ const UploadView: React.FC<UploadViewProps> = ({
     setCycleName(`${issueKey} – Test Cycle`);
   }, [issueKey]);
 
-  // Fetch TEST_CYCLE folders fresh every time component mounts
+  // Fetch TEST_CYCLE folders and AI suggestion fresh every time component mounts
   useEffect(() => {
     // Always fetch fresh data when component mounts
     fetchFolders();
+    fetchFixVersionsAndSuggestFolder();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps = run once on mount, fetchFolders uses projectKey from closure
+  }, []); // Empty deps = run once on mount
 
   // Auto-scroll to the selected folder option when it expands
   useEffect(() => {
@@ -91,6 +95,34 @@ const UploadView: React.FC<UploadViewProps> = ({
     }
   };
 
+  const fetchFixVersionsAndSuggestFolder = async () => {
+    setIsLoadingSuggestion(true);
+    try {
+      // First, get the fix versions from the story
+      const versions = await getStoryFixVersions(issueKey);
+      setFixVersions(versions);
+      
+      // If we have a fix version, ask AI to suggest the best folder
+      if (versions.length > 0) {
+        const suggestion = await suggestFolder(projectKey, versions[0], 'TEST_CYCLE');
+        setSuggestedFolder(suggestion);
+        
+        // If we got a suggestion with a folder, use it
+        if (suggestion.suggested_folder_id) {
+          setSelectedFolderId(suggestion.suggested_folder_id);
+        }
+      }
+      // Always default to 'recommended' option
+      setFolderOption('recommended');
+    } catch (err) {
+      console.error('Failed to get folder suggestion:', err);
+      // Still default to recommended (will use latest folder as fallback)
+      setFolderOption('recommended');
+    } finally {
+      setIsLoadingSuggestion(false);
+    }
+  };
+
   // Filter folders based on search term
   const filteredFolders = useMemo(() => {
     if (!searchTerm.trim()) return folders;
@@ -108,15 +140,21 @@ const UploadView: React.FC<UploadViewProps> = ({
 
   // Determine effective folder path based on option
   const effectiveFolderPath = useMemo(() => {
-    if (folderOption === 'latest' && latestFolder) {
-      return latestFolder.path;
+    if (folderOption === 'recommended') {
+      // Use AI-suggested folder if available, otherwise fall back to latest
+      if (suggestedFolder?.suggested_folder_path) {
+        return suggestedFolder.suggested_folder_path;
+      } else if (latestFolder) {
+        return latestFolder.path;
+      }
+      return null;
     } else if (folderOption === 'select' && selectedFolder) {
       return selectedFolder.path;
     } else if (folderOption === 'create' && customFolderPath.trim()) {
       return customFolderPath.trim();
     }
     return null;
-  }, [folderOption, latestFolder, selectedFolder, customFolderPath]);
+  }, [folderOption, suggestedFolder, latestFolder, selectedFolder, customFolderPath]);
 
   // Validation
   const isValid = useMemo(() => {
@@ -277,36 +315,79 @@ const UploadView: React.FC<UploadViewProps> = ({
               
               {/* Folder Options */}
               <div className="space-y-3">
-                {/* Latest Folder Option */}
+                {/* Recommended Folder Option (AI-suggested or Latest) */}
                 <div
                   className={`rounded-lg border transition-all ${
-                    folderOption === 'latest'
-                      ? 'bg-indigo-600/20 border-indigo-500'
-                      : 'bg-slate-900/50 border-slate-700 hover:border-slate-600'
+                    folderOption === 'recommended'
+                      ? 'bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border-purple-500'
+                      : 'bg-slate-900/50 border-slate-700 hover:border-purple-600/50'
                   }`}
                 >
                   <label className="flex items-start p-4 cursor-pointer">
                     <input
                       type="radio"
                       name="folderOption"
-                      value="latest"
-                      checked={folderOption === 'latest'}
-                      onChange={() => setFolderOption('latest')}
-                      disabled={isUploading || !latestFolder}
-                      className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                      value="recommended"
+                      checked={folderOption === 'recommended'}
+                      onChange={() => setFolderOption('recommended')}
+                      disabled={isUploading || (isLoadingSuggestion && isLoadingFolders)}
+                      className="mt-1 text-purple-600 focus:ring-purple-500"
                     />
                     <div className="ml-3 flex-1">
-                      <span className="text-slate-100 font-medium">Use latest cycle folder</span>
-                      {latestFolder ? (
-                        <p className="text-sm text-slate-400 mt-1">
-                          📁 {latestFolder.path}
+                      <span className="text-slate-100 font-medium flex items-center">
+                        <SparklesIcon className="w-4 h-4 mr-2 text-purple-400" />
+                        Recommended folder
+                      </span>
+                      
+                      {isLoadingSuggestion ? (
+                        <p className="text-sm text-slate-500 mt-1 flex items-center">
+                          <LoadingSpinner className="w-3 h-3 mr-2" />
+                          Analyzing fix version to find best folder...
                         </p>
+                      ) : suggestedFolder?.suggested_folder_path ? (
+                        <>
+                          <p className="text-sm text-slate-400 mt-1">
+                            📁 {suggestedFolder.suggested_folder_path}
+                          </p>
+                          {fixVersions.length > 0 && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              Based on fix version: <span className="text-purple-400">{fixVersions[0]}</span>
+                            </p>
+                          )}
+                          {suggestedFolder.reason && (
+                            <p className="text-xs text-slate-500 mt-1 italic">
+                              {suggestedFolder.reason}
+                            </p>
+                          )}
+                          <span className={`text-xs mt-1 inline-block ${
+                            suggestedFolder.confidence === 'high' 
+                              ? 'text-green-400' 
+                              : suggestedFolder.confidence === 'medium'
+                                ? 'text-amber-400'
+                                : 'text-slate-500'
+                          }`}>
+                            {suggestedFolder.confidence === 'high' ? '✨ AI Recommended' : 
+                             suggestedFolder.confidence === 'medium' ? '⚡ AI Suggested' : 
+                             '🤔 Best guess'}
+                          </span>
+                        </>
+                      ) : latestFolder ? (
+                        <>
+                          <p className="text-sm text-slate-400 mt-1">
+                            📁 {latestFolder.path}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {fixVersions.length === 0 
+                              ? 'No fix version found – using latest folder'
+                              : 'Using latest folder'}
+                          </p>
+                          <span className="text-xs text-green-400 mt-1 inline-block">Latest folder</span>
+                        </>
                       ) : (
                         <p className="text-sm text-slate-500 mt-1 italic">
-                          {isLoadingFolders ? 'Loading...' : 'No existing folders found'}
+                          {isLoadingFolders ? 'Loading folders...' : 'No folders available'}
                         </p>
                       )}
-                      <span className="text-xs text-green-400 mt-1 inline-block">Recommended</span>
                     </div>
                   </label>
                 </div>
