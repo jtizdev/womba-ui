@@ -749,7 +749,8 @@ export const getZephyrFolders = async (
  * @param cases An array of TestCase objects to upload.
  * @param projectKey Project key for Zephyr.
  * @param cycleName Name for the test cycle.
- * @param cycleFolderPath Optional folder path for the TEST_CYCLE (not test cases).
+ * @param cycleFolderId Optional folder ID for the TEST_CYCLE (preferred - avoids duplicate name issues).
+ * @param cycleFolderPath Optional folder path for creating new folders (only used if ID not provided).
  * @returns A promise that resolves to the upload result.
  */
 export const uploadToTestCycle = async (
@@ -757,6 +758,7 @@ export const uploadToTestCycle = async (
     cases: TestCase[],
     projectKey: string,
     cycleName: string,
+    cycleFolderId?: string,
     cycleFolderPath?: string
 ): Promise<UploadToCycleResult> => {
     console.log(`Uploading ${cases.length} test cases to cycle "${cycleName}" for ${issueKey}`);
@@ -769,7 +771,9 @@ export const uploadToTestCycle = async (
                 issue_key: issueKey,
                 project_key: projectKey,
                 cycle_name: cycleName,
-                // Use cycle_folder_path for TEST_CYCLE folders only
+                // Use cycle_folder_id to avoid duplicate folder name issues
+                cycle_folder_id: cycleFolderId,
+                // Fallback to path for creating new folders
                 cycle_folder_path: cycleFolderPath,
                 test_cases: cases.map(tc => ({
                     id: tc.id,
@@ -861,8 +865,9 @@ export const suggestFolder = async (
 };
 
 /**
- * Fetches the fix version for a Jira story.
- * Calls `GET /api/v1/stories/{issue_key}`.
+ * Fetches the fix versions for a Jira story.
+ * Tries RAG first (fast, local) then falls back to Jira API.
+ * Calls `GET /api/v1/stories/{issue_key}/fix-versions`.
  * 
  * @param issueKey The Jira issue key (e.g., "PLAT-12345").
  * @returns A promise that resolves to the fix versions array.
@@ -871,15 +876,17 @@ export const getStoryFixVersions = async (issueKey: string): Promise<string[]> =
     console.log(`Fetching fix versions for story ${issueKey}`);
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/stories/${issueKey}`);
+        // Use the dedicated fix-versions endpoint (tries RAG first, then Jira)
+        const response = await fetch(`${API_BASE_URL}/api/v1/stories/${issueKey}/fix-versions`);
         
         if (!response.ok) {
-            console.warn(`Could not fetch story ${issueKey}: ${response.status}`);
+            console.warn(`Could not fetch fix versions for ${issueKey}: ${response.status}`);
             return [];
         }
         
-        const story = await response.json();
-        return story.fix_versions || [];
+        const data = await response.json();
+        console.log(`Fix versions for ${issueKey} (source: ${data.source}):`, data.fix_versions);
+        return data.fix_versions || [];
     } catch (error) {
         console.error('Failed to fetch story fix versions:', error);
         return [];

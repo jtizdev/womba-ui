@@ -138,7 +138,26 @@ const UploadView: React.FC<UploadViewProps> = ({
     return folders.find(f => f.id === selectedFolderId);
   }, [folders, selectedFolderId]);
 
-  // Determine effective folder path based on option
+  // Determine effective folder ID based on option (preferred for Zephyr API)
+  const effectiveFolderId = useMemo(() => {
+    if (folderOption === 'recommended') {
+      // Use AI-suggested folder ID if available, otherwise fall back to latest
+      if (suggestedFolder?.suggested_folder_id) {
+        return suggestedFolder.suggested_folder_id;
+      } else if (latestFolder) {
+        return latestFolder.id;
+      }
+      return null;
+    } else if (folderOption === 'select' && selectedFolder) {
+      return selectedFolder.id;
+    } else if (folderOption === 'create') {
+      // For new folders, we don't have an ID yet - backend will create it
+      return null;
+    }
+    return null;
+  }, [folderOption, suggestedFolder, latestFolder, selectedFolder]);
+
+  // Determine effective folder path for display and for creating new folders
   const effectiveFolderPath = useMemo(() => {
     if (folderOption === 'recommended') {
       // Use AI-suggested folder if available, otherwise fall back to latest
@@ -171,12 +190,15 @@ const UploadView: React.FC<UploadViewProps> = ({
     setError(null);
 
     try {
+      // Use folder ID when available (for existing folders), otherwise pass path for new folder creation
       const result = await uploadToTestCycle(
         issueKey,
         selectedTestCases,
         projectKey,
         cycleName.trim(),
-        effectiveFolderPath || undefined
+        effectiveFolderId || undefined,
+        // Only pass path if creating a new folder (no ID available)
+        folderOption === 'create' ? effectiveFolderPath || undefined : undefined
       );
 
       if (result.success) {
