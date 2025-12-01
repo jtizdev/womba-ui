@@ -32,7 +32,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ selectedCount, onUpload, isUpload
               Uploading...
             </>
           ) : (
-            'Upload to Zephyr'
+            'Configure Test Cycle'
           )}
         </button>
       </div>

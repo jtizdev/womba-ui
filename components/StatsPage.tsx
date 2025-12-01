@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Stats, HistoryItem } from '../types';
 import { getStats, getHistory, getHistoryDetails, deleteTestPlan } from '../services/testCaseService';
-import { ChartBarIcon, LoadingSpinner, ClockIcon, CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChevronRightIcon, TrashIcon } from './icons';
+import { ChartBarIcon, LoadingSpinner, ClockIcon, CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChevronRightIcon, TrashIcon, EditIcon } from './icons';
 import ConfirmationModal from './ConfirmationModal';
 import Notification from './Notification';
 
@@ -161,6 +161,41 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
         }
     };
 
+    const handleEditClick = async (e: React.MouseEvent, item: HistoryItem) => {
+        e.stopPropagation(); // Prevent expanding the item
+        
+        // If test_plan is already loaded, use it directly
+        if (item.test_plan && onLoadTestPlan) {
+            onLoadTestPlan(item);
+            return;
+        }
+        
+        // Otherwise, fetch the details first
+        setLoadingDetails(prev => new Set([...prev, item.id]));
+        try {
+            const details = await getHistoryDetails(item.id);
+            // Update history item with details
+            const updatedDetails = {
+                ...details,
+                test_count: details.test_plan?.test_cases?.length ?? details.test_count
+            };
+            setHistory(prev => prev.map(h => h.id === item.id ? updatedDetails : h));
+            
+            // Now call the callback with the loaded data
+            if (onLoadTestPlan) {
+                onLoadTestPlan(updatedDetails);
+            }
+        } catch (error) {
+            triggerNotification('Failed to load test plan details.', 'error');
+        } finally {
+            setLoadingDetails(prev => {
+                const next = new Set(prev);
+                next.delete(item.id);
+                return next;
+            });
+        }
+    };
+
     const handleDeleteClick = (e: React.MouseEvent, item: HistoryItem) => {
         e.stopPropagation(); // Prevent expanding the item
         setItemToDelete({ id: item.id, storyKey: item.story_key });
@@ -315,6 +350,20 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                                                             >
                                                                 {item.status}
                                                             </span>
+                                                            {onLoadTestPlan && (
+                                                                <button
+                                                                    onClick={(e) => handleEditClick(e, item)}
+                                                                    disabled={loadingDetails.has(item.id)}
+                                                                    className="p-1.5 rounded-md hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                                                                    title="Edit test plan"
+                                                                >
+                                                                    {loadingDetails.has(item.id) ? (
+                                                                        <LoadingSpinner className="w-4 h-4" />
+                                                                    ) : (
+                                                                        <EditIcon className="w-4 h-4" />
+                                                                    )}
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={(e) => handleDeleteClick(e, item)}
                                                                 className="p-1.5 rounded-md hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
@@ -372,16 +421,6 @@ const StatsPage: React.FC<StatsPageProps> = ({ onLoadTestPlan }) => {
                                                                 {item.zephyr_ids && item.zephyr_ids.length > 0 && (
                                                                     <div className="mt-3 text-xs text-green-400">
                                                                         ✓ Uploaded to Zephyr: {item.zephyr_ids.join(', ')}
-                                                                    </div>
-                                                                )}
-                                                                {onLoadTestPlan && (
-                                                                    <div className="mt-4 flex justify-end">
-                                                                        <button
-                                                                            onClick={() => onLoadTestPlan(item)}
-                                                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors text-sm font-medium"
-                                                                        >
-                                                                            Edit / Upload Test Plan
-                                                                        </button>
                                                                     </div>
                                                                 )}
                                                             </div>

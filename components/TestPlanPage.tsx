@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { TestCase } from '../types';
+import { TestCase, UploadToCycleResult } from '../types';
 import { uploadTestCases, updateTestPlan, getTestPlan, deleteTestPlan } from '../services/testCaseService';
 import TestCaseCard from './TestCaseCard';
-import ActionBar from './ActionBar';
 import Header from './Header';
 import Notification from './Notification';
 import ConfirmationModal from './ConfirmationModal';
-import Pagination from './Pagination';
+import UploadView from './UploadView';
 import { ExpandAllIcon, CollapseAllIcon, PlusIcon } from './icons';
 
 type NotificationType = 'success' | 'error' | 'info';
@@ -16,6 +15,8 @@ type NotificationState = {
   type: NotificationType;
   onUndo?: () => void;
 };
+
+type ViewMode = 'review' | 'upload';
 
 const ITEMS_PER_PAGE = 4;
 
@@ -39,7 +40,13 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [uploadStats, setUploadStats] = useState<{ count: number; zephyrIds: string[]; folderPath?: string } | null>(null);
+  const [uploadStats, setUploadStats] = useState<{ count: number; zephyrIds: string[]; folderPath?: string; cycleKey?: string } | null>(null);
+  
+  // View mode state - 'review' for test case list, 'upload' for upload wizard
+  const [viewMode, setViewMode] = useState<ViewMode>('review');
+  
+  // Extract project key from issue key
+  const projectKey = useMemo(() => issueKey.split('-')[0], [issueKey]);
 
 
   const triggerNotification = useCallback((message: string, type: NotificationType, onUndo?: () => void) => {
@@ -354,7 +361,7 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
               tc.id === id ? { ...tc, ...updates } : tc
             );
             setTestCases(updatedTestCases);
-            triggerNotification('Test case updated, but failed to reload from server.', 'warning');
+            triggerNotification('Test case updated, but failed to reload from server.', 'info');
         }
     } catch (error) {
         console.error('Failed to update test plan:', error);
@@ -395,42 +402,49 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
     return testCases.length > 0 && selectedCount === testCases.length;
   }, [testCases, selectedCount]);
 
+  const selectedTestCases = useMemo(() => {
+    return testCases.filter(tc => tc.isSelected);
+  }, [testCases]);
 
-  const handleBulkUpload = async () => {
+
+  // Switch to upload view instead of opening a modal
+  const handleBulkUpload = () => {
     const selectedCases = testCases.filter(tc => tc.isSelected);
     if (selectedCases.length === 0) {
       triggerNotification("No test cases selected for upload.", "error");
       return;
     }
+    // Switch to upload view
+    setViewMode('upload');
+  };
 
-    const projectKeyToUse = issueKey.split('-')[0]; // Extract project key from issue key
-
-    try {
-      setIsBulkUploading(true);
-      const result = await uploadTestCases(issueKey, selectedCases, projectKeyToUse);
-      const uploadedCount = result.zephyr_results?.uploaded_count || selectedCases.length;
-      const zephyrIds = result.zephyr_results?.test_case_ids || [];
-      
-      // Show success modal with stats
-      setUploadStats({
-        count: uploadedCount,
-        zephyrIds: zephyrIds,
-        folderPath: result.zephyr_results?.folder_path
-      });
-      setShowSuccessModal(true);
-      
-      const selectedIds = new Set(selectedCases.map(tc => tc.id));
-      const newTestCases = testCases.filter(tc => !selectedIds.has(tc.id));
-      setTestCases(newTestCases);
-      const newTotalPages = Math.max(1, Math.ceil(newTestCases.length / ITEMS_PER_PAGE));
-      if (currentPage > newTotalPages) {
-          setCurrentPage(newTotalPages);
-      }
-    } catch (err) {
-      triggerNotification('Failed to upload test cases. Please try again.', 'error');
-    } finally {
-      setIsBulkUploading(false);
+  const handleUploadSuccess = (result: UploadToCycleResult) => {
+    // Switch back to review mode
+    setViewMode('review');
+    
+    // Show success modal with stats
+    setUploadStats({
+      count: result.test_case_count,
+      zephyrIds: result.test_case_ids,
+      cycleKey: result.cycle_key
+    });
+    setShowSuccessModal(true);
+    
+    // Remove uploaded test cases from the list
+    const selectedCases = testCases.filter(tc => tc.isSelected);
+    const selectedIds = new Set(selectedCases.map(tc => tc.id));
+    const newTestCases = testCases.filter(tc => !selectedIds.has(tc.id));
+    setTestCases(newTestCases);
+    
+    // Adjust pagination if needed
+    const newTotalPages = Math.max(1, Math.ceil(newTestCases.length / ITEMS_PER_PAGE));
+    if (currentPage > newTotalPages) {
+      setCurrentPage(newTotalPages);
     }
+  };
+
+  const handleBackFromUpload = () => {
+    setViewMode('review');
   };
   
   const handleDismissNotification = (id: number) => {
@@ -443,8 +457,23 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
     </button>
   );
 
+  // Render Upload View if in upload mode
+  if (viewMode === 'upload') {
+    return (
+      <UploadView
+        issueKey={issueKey}
+        projectKey={projectKey}
+        jiraStory={jiraStory}
+        selectedTestCases={selectedTestCases}
+        onBack={handleBackFromUpload}
+        onSuccess={handleUploadSuccess}
+      />
+    );
+  }
+
+  // Otherwise render the review view
   return (
-    <>
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Success Banner - Non-blocking */}
       {showSuccessModal && uploadStats && (
         <div className="fixed top-6 right-6 z-50 max-w-md animate-slide-in-right">
@@ -480,6 +509,11 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
                     <p>
                       <span className="font-semibold">{uploadStats.count}</span> test case{uploadStats.count !== 1 ? 's' : ''} uploaded to Zephyr
                     </p>
+                    {uploadStats.cycleKey && (
+                      <p className="text-white/80">
+                        🔄 Test Cycle: <span className="font-semibold">{uploadStats.cycleKey}</span>
+                      </p>
+                    )}
                     {uploadStats.folderPath && (
                       <p className="text-white/80">
                         📁 Folder: <span className="font-semibold">{uploadStats.folderPath}</span>
@@ -504,6 +538,7 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
         </div>
       )}
 
+      {/* Fixed Header */}
       <Header 
         showNotifications={showNotifications}
         onToggleNotifications={() => setShowNotifications(prev => !prev)}
@@ -511,7 +546,10 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
         onToggleHighlightAssertions={() => setHighlightAssertions(prev => !prev)}
         onBackToSearch={onBackToSearch}
       />
-      <main className="container max-w-4xl mx-auto px-4 py-8 pb-32">
+      
+      {/* Scrollable Content Area */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="container max-w-4xl mx-auto px-4 py-8 pb-8">
         
           <>
             <div className="mb-8 text-center">
@@ -535,7 +573,7 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
                     {testCases.length > 0 && (
                         <ActionButton onClick={handleToggleAllExpansion}>
                            {allExpanded ? <CollapseAllIcon className="w-4 h-4" /> : <ExpandAllIcon className="w-4 h-4" />}
-                           <span>{allExpanded ? 'Collapse All' : 'Collapse All'}</span>
+                           <span>{allExpanded ? 'Collapse All' : 'Expand All'}</span>
                         </ActionButton>
                     )}
                     {testCases.length > 0 && !allSelected && <ActionButton onClick={handleSelectAll}><span>Select All</span></ActionButton>}
@@ -574,21 +612,74 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
                     <p>All test cases have been uploaded. Great job!</p>
                 </div>
             )}
-            {totalPages > 1 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
-            )}
           </>
-        
+        </div>
       </main>
-      <ActionBar
-        selectedCount={selectedCount}
-        onUpload={handleBulkUpload}
-        isUploading={isBulkUploading || !!uploadingCardId}
-      />
+      
+      {/* Fixed Bottom Bar - ActionBar + Pagination */}
+      <div className="flex-shrink-0 bg-slate-900/95 backdrop-blur-sm border-t border-slate-800">
+        <div className="container max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            {/* Left: Selection count */}
+            <div className="flex items-center space-x-3">
+              <div className={`transition-all duration-200 flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${selectedCount > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                {selectedCount}
+              </div>
+              <span className="font-medium text-slate-300">
+                Test Case{selectedCount !== 1 ? 's' : ''} Selected
+              </span>
+            </div>
+            
+            {/* Center: Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-sm text-slate-400 min-w-[80px] text-center">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            
+            {/* Right: Configure Test Cycle button */}
+            <button
+              onClick={handleBulkUpload}
+              disabled={selectedCount === 0 || isBulkUploading || !!uploadingCardId}
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold py-2 px-6 rounded-lg flex items-center justify-center transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 disabled:from-zinc-700 disabled:to-zinc-700 disabled:cursor-not-allowed disabled:text-zinc-400 shadow-lg hover:shadow-indigo-500/50 disabled:shadow-none disabled:translate-y-0"
+            >
+              {(isBulkUploading || !!uploadingCardId) ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Uploading...
+                </>
+              ) : (
+                'Configure Test Cycle'
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Notifications - Fixed Position */}
       <div className="fixed top-20 right-5 w-full max-w-sm z-50 flex flex-col space-y-3">
         {notifications.map(notif => (
             <Notification 
@@ -601,6 +692,8 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
             />
         ))}
       </div>
+      
+      {/* Modals */}
       <ConfirmationModal
         isOpen={!!testCaseToDelete}
         title="Confirm Deletion"
@@ -641,7 +734,7 @@ const TestPlanPage: React.FC<TestPlanPageProps> = ({ jiraStory, initialTestCases
         onConfirm={confirmBulkDelete}
         onCancel={() => setShowBulkDeleteModal(false)}
       />
-    </>
+    </div>
   );
 };
 

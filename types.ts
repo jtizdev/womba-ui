@@ -117,3 +117,24 @@ export interface RagSearchResult {
   metadata: any;
   score: number;
 }
+
+// Zephyr folder types
+export interface ZephyrFolder {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  path: string;
+}
+
+export interface UploadToCycleResult {
+  success: boolean;
+  cycle_key?: string;
+  cycle_name: string;
+  test_case_count: number;
+  test_case_ids: string[];
+  execution_count: number;
+  linked_to_story: boolean;
+  story_key?: string;
+  errors: string[];
+  test_case_results: Record<string, string>;
+}

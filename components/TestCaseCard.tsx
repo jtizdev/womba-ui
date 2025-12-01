@@ -141,16 +141,21 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, onToggleSelect, o
             </div>
           </label>
         </div>
-        <div className="flex-grow" onDoubleClick={() => setIsEditing(true)}>
+        <div 
+          className="flex-grow cursor-pointer" 
+          onDoubleClick={() => setIsEditing(true)}
+          onClick={() => !isEditing && onToggleExpand(testCase.id)}
+        >
           {isEditing ? (
             <input
               type="text"
               value={editedTitle}
               onChange={(e) => setEditedTitle(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
               className="w-full bg-slate-950 border border-slate-700 rounded-md p-2 text-lg font-semibold text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
           ) : (
-            <h2 className="text-lg font-semibold text-slate-100 cursor-pointer">{testCase.title}</h2>
+            <h2 className="text-lg font-semibold text-slate-100 cursor-pointer hover:text-indigo-300 transition-colors">{testCase.title}</h2>
           )}
           <span className="text-xs font-mono text-slate-500">{testCase.id}</span>
         </div>

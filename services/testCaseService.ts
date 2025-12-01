@@ -1,4 +1,4 @@
-import { TestCase, JiraStory, RagStats, GenerateTestPlanResponse, Config, Stats, HistoryItem, RagSearchResult } from '../types';
+import { TestCase, JiraStory, RagStats, GenerateTestPlanResponse, Config, Stats, HistoryItem, RagSearchResult, ZephyrFolder, UploadToCycleResult } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -702,6 +702,111 @@ export const deleteTestPlan = async (issueKey: string): Promise<{ success: boole
         return data;
     } catch (error) {
         console.error('Failed to delete test plan:', error);
+        throw error;
+    }
+};
+
+// --- Zephyr Folder and Test Cycle Service Functions ---
+
+/**
+ * Fetches Zephyr folders for a project.
+ * Calls `GET /api/v1/zephyr/folders`.
+ * 
+ * @param projectKey The Jira project key (e.g., "PLAT").
+ * @param folderType The folder type: "TEST_CASE" or "TEST_CYCLE".
+ * @returns A promise that resolves to an array of ZephyrFolder objects.
+ */
+export const getZephyrFolders = async (
+    projectKey: string, 
+    folderType: string = 'TEST_CASE'
+): Promise<ZephyrFolder[]> => {
+    console.log(`Fetching ${folderType} folders for project ${projectKey}`);
+    
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/v1/zephyr/folders?project_key=${encodeURIComponent(projectKey)}&folder_type=${encodeURIComponent(folderType)}`
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch folders: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`Fetched ${data.folders?.length || 0} folders`);
+        return data.folders || [];
+    } catch (error) {
+        console.error('Failed to fetch Zephyr folders:', error);
+        throw error;
+    }
+};
+
+/**
+ * Uploads test cases to Zephyr and adds them to a new test cycle.
+ * Calls `POST /api/v1/zephyr/upload-to-cycle`.
+ * 
+ * @param issueKey The Jira issue key (e.g., "PLAT-12345").
+ * @param cases An array of TestCase objects to upload.
+ * @param projectKey Project key for Zephyr.
+ * @param cycleName Name for the test cycle.
+ * @param cycleFolderPath Optional folder path for the TEST_CYCLE (not test cases).
+ * @returns A promise that resolves to the upload result.
+ */
+export const uploadToTestCycle = async (
+    issueKey: string,
+    cases: TestCase[],
+    projectKey: string,
+    cycleName: string,
+    cycleFolderPath?: string
+): Promise<UploadToCycleResult> => {
+    console.log(`Uploading ${cases.length} test cases to cycle "${cycleName}" for ${issueKey}`);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/zephyr/upload-to-cycle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                issue_key: issueKey,
+                project_key: projectKey,
+                cycle_name: cycleName,
+                // Use cycle_folder_path for TEST_CYCLE folders only
+                cycle_folder_path: cycleFolderPath,
+                test_cases: cases.map(tc => ({
+                    id: tc.id,
+                    title: tc.title,
+                    description: tc.description,
+                    preconditions: tc.preconditions,
+                    expected_result: tc.expected_result,
+                    priority: tc.priority,
+                    test_type: tc.test_type,
+                    tags: tc.tags,
+                    steps: tc.stepsArray || []
+                }))
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to upload to cycle: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Upload to cycle result:', data);
+        
+        return {
+            success: data.success,
+            cycle_key: data.cycle_key,
+            cycle_name: data.cycle_name,
+            test_case_count: data.test_case_count,
+            test_case_ids: data.test_case_ids || [],
+            execution_count: data.execution_count,
+            linked_to_story: data.linked_to_story,
+            story_key: data.story_key,
+            errors: data.errors || [],
+            test_case_results: data.test_case_results || {}
+        };
+    } catch (error) {
+        console.error('Failed to upload to test cycle:', error);
         throw error;
     }
 };
